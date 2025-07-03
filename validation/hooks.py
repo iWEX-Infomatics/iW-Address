@@ -1,8 +1,8 @@
 app_name = "validation"
 app_title = "Validation"
-app_publisher = "pooja"
+app_publisher = "Ameer Babu"
 app_description = "An App for Validation for Name Fields"
-app_email = "poojaajumon@gmail.com"
+app_email = "emails@iwex.in"
 app_license = "mit"
 
 # Apps
