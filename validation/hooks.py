@@ -26,7 +26,7 @@ app_license = "mit"
 
 # include js, css files in header of desk.html
 # app_include_css = "/assets/validation/css/validation.css"
-# app_include_js = "/assets/validation/js/validation.js"
+# app_include_js = "/assets/validation/js/address.js"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/validation/css/validation.css"
@@ -252,3 +252,17 @@ doctype_js = {
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
 
+doc_events = {
+    "Address": {
+        "after_insert": "validation.customization.address.get_post_offices"
+    }
+}
+
+fixtures = [    
+    {
+        "doctype": "Custom Field",
+        "filters": [
+            ["module", "=", "Validation"],
+        ]
+    }
+]
