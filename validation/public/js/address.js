@@ -156,15 +156,15 @@ before_save: function(frm) {
 })
 
 
-function format_name(name, custom_autoname) {
+function format_name(name, custom_automate) {
     if (!name) return '';
 
-    if (!custom_autoname) {
-        // Agar custom_autoname 0 ho to jo user ne dala waisa hi wapas do
+    if (!custom_automate) {
+        // Agar custom_automate 0 ho to jo user ne dala waisa hi wapas do
         return name;
     }
 
-    // custom_autoname 1 hai to existing formatting karo
+    // custom_automate 1 hai to existing formatting karo
     let formattedName = name.replace(/[^a-zA-Z\s]/g, ''); // Keep only letters and spaces
     formattedName = formattedName.trim().toLowerCase().replace(/\b(\w)/g, function(match) {
         return match.toUpperCase();
