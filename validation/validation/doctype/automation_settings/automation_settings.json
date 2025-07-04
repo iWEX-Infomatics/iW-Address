@@ -8,89 +8,65 @@
  "field_order": [
   "automation_control_section",
   "enable_customer_automation",
+  "enable_address_automation",
   "enable_supplier_automation",
   "enable_employee_automation",
-  "enable_address_automation",
+  "column_break_coti",
   "enable_contact_automation",
   "enable_item_automation",
-  "enable_item_group_automation",
-  "enable_batch_automation",
-  "enable_serial_automation",
-  "section_break_item_fields",
-  "enable_item_code",
-  "enable_item_name",
-  "enable_item_description"
+  "enable_item_group_automation"
  ],
  "fields": [
   {
    "fieldname": "automation_control_section",
    "fieldtype": "Section Break",
-   "label": "Enable Automation For"
+   "label": "Enable Automation for the following Doctypes:"
   },
   {
+   "default": "0",
    "fieldname": "enable_customer_automation",
    "fieldtype": "Check",
-   "label": "Customer"
+   "label": "Customer "
   },
   {
-   "fieldname": "enable_supplier_automation",
-   "fieldtype": "Check",
-   "label": "Supplier"
-  },
-  {
-   "fieldname": "enable_employee_automation",
-   "fieldtype": "Check",
-   "label": "Employee"
-  },
-  {
+   "default": "0",
    "fieldname": "enable_address_automation",
    "fieldtype": "Check",
-   "label": "Address"
+   "label": "Address "
   },
   {
+   "default": "0",
+   "fieldname": "enable_supplier_automation",
+   "fieldtype": "Check",
+   "label": "Supplier "
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_employee_automation",
+   "fieldtype": "Check",
+   "label": "Employee "
+  },
+  {
+   "default": "0",
    "fieldname": "enable_contact_automation",
    "fieldtype": "Check",
-   "label": "Contact"
+   "label": "Contact "
   },
   {
+   "default": "0",
    "fieldname": "enable_item_automation",
    "fieldtype": "Check",
    "label": "Item"
   },
   {
+   "default": "0",
    "fieldname": "enable_item_group_automation",
    "fieldtype": "Check",
-   "label": "Item Group"
+   "label": "Item Group "
   },
   {
-   "fieldname": "enable_batch_automation",
-   "fieldtype": "Check",
-   "label": "Batch"
-  },
-  {
-   "fieldname": "enable_serial_automation",
-   "fieldtype": "Check",
-   "label": "Serial"
-  },
-  {
-   "fieldname": "section_break_item_fields",
-   "fieldtype": "Section Break",
-   "label": "Fields in Item Doctype"
-  },
-  {
-   "fieldname": "enable_item_code",
-   "fieldtype": "Check",
-   "label": "Item Code"
-  },
-  {
-   "fieldname": "enable_item_name",
-   "fieldtype": "Check",
-   "label": "Item Name"
-  },
-  {
-   "fieldname": "enable_item_description",
-   "fieldtype": "Check",
-   "label": "Description"
+   "fieldname": "column_break_coti",
+   "fieldtype": "Column Break"
   }
  ],
  "index_web_pages_for_search": 1,
