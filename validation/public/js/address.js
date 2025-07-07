@@ -68,81 +68,60 @@ frappe.ui.form.on('Address', {
             console.log("custom_automate is enabled. Skipping state trigger.");
         }
     },
-pincode: function(frm) {
-    if (frm.doc.country === 'India' && frm.doc.pincode) {
-        frappe.call({
-            method: 'validation.customization.address.get_post_offices',
-            args: { pincode: frm.doc.pincode },
-            callback: function(r) {
-                const offices = r.message || [];
+    pincode: function(frm) {
+        if (frm.doc.country === 'India' && frm.doc.pincode) {
+            frappe.call({
+                method: 'validation.customization.address.get_post_offices',
+                args: { pincode: frm.doc.pincode },
+                callback: function(r) {
+                    const offices = r.message || [];
 
-                if (offices.length === 1) {
-                    frm.set_value('custom_post_office', offices[0].post_office);
-                    frm.set_value('custom_taluk',       offices[0].taluk);
-                    frm.set_value('state',       offices[0].state);
-                    frm.set_value('county',      offices[0].district);
-                    // frappe.msgprint(`Post Office set to ${offices[0].post_office}, Taluk: ${offices[0].taluk}, City: ${offices[0].city}, State: ${offices[0].state}`);
-                }
-                else if (offices.length > 1) {
-                    let html = `
-                        <style>
-                            .po-table { width:100%; border-collapse: collapse; }
-                            .po-table th, .po-table td { border:1px solid #ddd; padding:8px; }
-                            .po-table th { background:#f2f2f2; }
-                        </style>
-                        <table class="po-table">
-                            <thead>
-                                <tr>
-                                    <th style="width:50px">Select</th>
-                                    <th>Post Office</th>
-                                    <th>Taluk</th>
-                                    <th>State</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${offices.map((o, i) => `
-                                    <tr>
-                                        <td>
-                                            <input type="radio" id="po_${i}" name="po" value="${i}">
-                                        </td>
-                                        <td><label for="po_${i}">${o.post_office}</label></td>
-                                        <td>${o.taluk || ''}</td>
-                                        <td>${o.state || ''}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    `;
-                    let d = new frappe.ui.Dialog({
-                        title: 'Select Post Office',
-                        fields: [
-                            { fieldtype: 'HTML', fieldname: 'table_html', options: html }
-                        ],
-                        primary_action_label: 'Set',
-                        primary_action() {
-                            const wrapper = d.get_field('table_html').$wrapper;
-                            const selectedIndex = wrapper.find('input[name="po"]:checked').val();
-                            if (selectedIndex === undefined) {
-                                frappe.msgprint('Please select a Post Office.');
-                                return;
+                    if (offices.length === 1) {
+                        frm.set_value('custom_post_office', offices[0].post_office);
+                        frm.set_value('custom_taluk', offices[0].taluk);
+                        frm.set_value('state', offices[0].state);
+                        frm.set_value('county', offices[0].district);
+                    }
+                    else if (offices.length > 1) {
+                        let options = offices.map((o, i) => {
+                            return { label: o.post_office, value: i };
+                        });
+
+                        let d = new frappe.ui.Dialog({
+                            title: 'Select Post Office',
+                            fields: [
+                                {
+                                    label: 'Post Office',
+                                    fieldname: 'selected_po',
+                                    fieldtype: 'Select',
+                                    options: options
+                                }
+                            ],
+                            primary_action_label: 'Set',
+                            primary_action(values) {
+                                if (values.selected_po === undefined || values.selected_po === '') {
+                                    frappe.msgprint('Please select a Post Office.');
+                                    return;
+                                }
+                                const sel = offices[parseInt(values.selected_po)];
+                                frm.set_value('custom_post_office', sel.post_office);
+                                frm.set_value('custom_taluk', sel.taluk);
+                                frm.set_value('state', sel.state);
+                                frm.set_value('county', sel.district);
+                                d.hide();
                             }
-                            const sel = offices[parseInt(selectedIndex)];
-                            frm.set_value('custom_post_office', sel.post_office);
-                            frm.set_value('custom_taluk',       sel.taluk);
-                            frm.set_value('state',       sel.state);
-                            frm.set_value('county', sel.district);
-                            d.hide();
-                        }
-                    });
-                    d.show();
+                        });
+
+                        d.show();
+                    }
+                    else {
+                        frappe.msgprint('No Post Office found for this Pincode');
+                    }
                 }
-                else {
-                    frappe.msgprint('No Post Office found for this Pincode');
-                }
-            }
-        });
+            });
+        }
     }
-}
+
 ,
 before_save: function(frm) {
     if (!frm.doc.custom_automate && !frm._auto_updated) {
@@ -152,20 +131,13 @@ before_save: function(frm) {
     }
 }
 
-
 })
 
 
-function format_name(name, custom_automate) {
+function format_name(name) {
     if (!name) return '';
 
-    if (!custom_automate) {
-        // Agar custom_automate 0 ho to jo user ne dala waisa hi wapas do
-        return name;
-    }
-
-    // custom_automate 1 hai to existing formatting karo
-    let formattedName = name.replace(/[^a-zA-Z\s]/g, ''); // Keep only letters and spaces
+    let formattedName = name.replace(/[^a-zA-Z\s]/g, ''); 
     formattedName = formattedName.trim().toLowerCase().replace(/\b(\w)/g, function(match) {
         return match.toUpperCase();
     });
@@ -174,7 +146,6 @@ function format_name(name, custom_automate) {
 
     return formattedName;
 }
-
 
 function check_automation_enabled(frm, callback) {
     frappe.call({
