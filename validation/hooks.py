@@ -254,8 +254,10 @@ doctype_js = {
 
 doc_events = {
     "Address": {
-        "after_insert": "validation.customization.address.get_post_offices"
-    }
+        "after_insert": "validation.customization.address.fetch_post_offices_on_save",
+        "validate": "validation.customization.territory.ensure_territory_from_address",
+        "on_update": "validation.customization.customer_address.update_customer_territory_from_address"
+   }
 }
 
 fixtures = [    

@@ -1,9 +1,13 @@
 import frappe
 import requests
 
+# For Doc Event Hook (Address after_insert)
+def fetch_post_offices_on_save(doc, method):
+    if doc.pincode:
+        post_offices = get_post_offices_api(doc.pincode)
+
 @frappe.whitelist()
-def get_post_offices(pincode):
-    """Fetch post offices + taluk (Block) + state + district (for county) for an Indian PIN using India Post API."""
+def get_post_offices_api(pincode):
     if not pincode:
         return []
 
@@ -27,3 +31,4 @@ def get_post_offices(pincode):
             "district":    po.get("District")
         })
     return result
+
