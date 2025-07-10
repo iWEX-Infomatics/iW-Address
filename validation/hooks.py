@@ -51,7 +51,13 @@ doctype_js = {
     "Batch" : "public/js/batch_name.js",
     "Employee" : "public/js/employee_name.js",
     "Item" : "public/js/item_name.js",
-    "Item Group" : "public/js/item_group.js"
+    "Item Group" : "public/js/item_group.js",
+    "Customer Group" : "public/js/customer_group.js",
+    "Supplier Group" : "public/js/supplier_group.js",
+    "Brand" : "public/js/brand.js",
+    "Terms and Conditions" : "public/js/terms.js",
+    "Payment Term" : "public/js/payment_terms.js",
+    "Payment Terms Template" : "public/js/payment_term_template.js"
 }
 
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}

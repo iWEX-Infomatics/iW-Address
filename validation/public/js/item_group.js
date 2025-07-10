@@ -2,12 +2,12 @@ frappe.ui.form.on('Item Group', {
     onload: function(frm) {
         if (frm.is_new()) {
             console.log("Form is new. Initializing custom_automate.");
-            frm.set_value('custom_automate', 0); // Disable custom_automate for new forms
+            frm.set_value('custom_automate', 1); // Enabled custom_automate for new forms
         }
     },
 
     item_group_name: function(frm) {
-        if (!frm.doc.custom_automate) {
+        if (frm.doc.custom_automate) {
             console.log("Item Group Name trigger activated and custom_automate is disabled");
             check_automation_enabled(frm, function(is_enabled) {
                 console.log("Automation check result:", is_enabled);

@@ -2,7 +2,7 @@ frappe.ui.form.on('Contact', {
     onload: function(frm) {
         if (frm.is_new()) {
             console.log("Form is new. Initializing custom_automate.");
-            frm.set_value('custom_automate', 0); // Set custom_automate to disabled for new forms
+            frm.set_value('custom_automate', 0); // Set custom_automate to Enabled for new forms
         }
 
         check_automation_enabled(frm, function(is_enabled) {

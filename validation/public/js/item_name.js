@@ -2,12 +2,12 @@ frappe.ui.form.on('Item', {
     onload: function(frm) {
         if (frm.is_new()) {
             console.log("Form is new. Initializing custom_automate.");
-            frm.set_value('custom_automate', 0); // Disable custom_automate for new forms
+            frm.set_value('custom_automate', 1); // Enabled custom_automate for new forms
         }
     },
 
     item_code: function(frm) {
-        if (!frm.doc.custom_automate) {
+        if (frm.doc.custom_automate) {
             console.log("ItemCode trigger activated and custom_automate is disabled");
             check_automation_enabled(frm, function(is_enabled) {
                 console.log("Automation check result:", is_enabled);
@@ -21,7 +21,36 @@ frappe.ui.form.on('Item', {
             console.log("custom_automate is enabled. Skipping Item Code trigger.");
         }
     },
-
+    item_name: function(frm) {
+        if (frm.doc.custom_automate) {
+            console.log("ItemCode trigger activated and custom_automate is disabled");
+            check_automation_enabled(frm, function(is_enabled) {
+                console.log("Automation check result:", is_enabled);
+                if (is_enabled) {
+                    const formatted_name = format_name(frm.doc.item_name);
+                    console.log("Formatted Name:", formatted_name);
+                    frm.set_value('item_name', formatted_name);
+                }
+            });
+        } else {
+            console.log("custom_automate is enabled. Skipping Item Code trigger.");
+        }
+    },
+    description: function(frm) {
+        if (frm.doc.custom_automate) {
+            console.log("ItemCode trigger activated and custom_automate is disabled");
+            check_automation_enabled(frm, function(is_enabled) {
+                console.log("Automation check result:", is_enabled);
+                if (is_enabled) {
+                    const formatted_name = format_name(frm.doc.description);
+                    console.log("Formatted Name:", formatted_name);
+                    frm.set_value('description', formatted_name);
+                }
+            });
+        } else {
+            console.log("custom_automate is enabled. Skipping Item Code trigger.");
+        }
+    },
     after_save: function(frm) {
         if (!frm.doc.custom_automate) {
             console.log("After Save: Enabling custom_automate");

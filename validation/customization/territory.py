@@ -36,10 +36,8 @@ def ensure_territory_from_address(doc, method):
         else:
             parent = territory
 
-    # Set on Address
     doc.territory = territory_chain[-1]
 
-    # Set on linked Customers
     linked_customers = frappe.get_all(
         "Dynamic Link",
         filters={
@@ -54,6 +52,4 @@ def ensure_territory_from_address(doc, method):
         customer = frappe.get_doc("Customer", link.link_name)
         customer.territory = doc.territory
         customer.save(ignore_permissions=True)
-
-    if linked_customers:
-        frappe.msgprint(f"Linked Customers territories also updated to {doc.territory}")       
+     
