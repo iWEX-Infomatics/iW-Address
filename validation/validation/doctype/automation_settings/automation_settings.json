@@ -4,7 +4,7 @@
  "creation": "2024-12-04 10:32:29.773219",
  "doctype": "DocType",
  "engine": "InnoDB",
- "is_single": 1,
+ "issingle": 1,
  "field_order": [
   "automation_control_section",
   "enable_customer_automation",

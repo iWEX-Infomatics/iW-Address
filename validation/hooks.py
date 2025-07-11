@@ -272,5 +272,11 @@ fixtures = [
         "filters": [
             ["module", "=", "Validation"],
         ]
+    },
+        {
+        "doctype": "Property Setter",
+        "filters": [
+            ["module", "=", "Validation"],
+        ]
     }
 ]
