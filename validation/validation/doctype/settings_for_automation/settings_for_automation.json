@@ -14,12 +14,12 @@
   "enable_address_automation",
   "enable_employee_automation",
   "column_break_okdg",
+  "enable_brand_automation",
   "enable_supplier_automation",
   "custom_supplier_group",
-  "enable_brand_automation",
-  "custom_batch",
-  "custom_terms_and_conditions",
+  "enable_bank_automation",
   "custom_payment_term",
+  "custom_terms_and_conditions",
   "custom_payment_term_template"
  ],
  "fields": [
@@ -83,12 +83,6 @@
   },
   {
    "default": "0",
-   "fieldname": "custom_batch",
-   "fieldtype": "Check",
-   "label": "Batch"
-  },
-  {
-   "default": "0",
    "fieldname": "custom_terms_and_conditions",
    "fieldtype": "Check",
    "label": "Terms and Conditions"
@@ -115,13 +109,19 @@
    "fieldname": "enable_brand_automation",
    "fieldtype": "Check",
    "label": "Brand"
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_bank_automation",
+   "fieldtype": "Check",
+   "label": "Bank Account"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-07-11 12:21:03.415938",
+ "modified": "2025-07-11 13:38:44.405237",
  "modified_by": "Administrator",
  "module": "Validation",
  "name": "Settings for Automation",

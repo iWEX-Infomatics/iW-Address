@@ -57,7 +57,8 @@ doctype_js = {
     "Brand" : "public/js/brand.js",
     "Terms and Conditions" : "public/js/terms.js",
     "Payment Term" : "public/js/payment_terms.js",
-    "Payment Terms Template" : "public/js/payment_term_template.js"
+    "Payment Terms Template" : "public/js/payment_term_template.js",
+    "Bank Account" : "public/js/bank_account.js"
 }
 
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
