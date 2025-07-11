@@ -20,7 +20,9 @@
   "enable_bank_automation",
   "custom_payment_term",
   "custom_terms_and_conditions",
-  "custom_payment_term_template"
+  "custom_payment_term_template",
+  "exclude_field_column",
+  "item_code_automation"
  ],
  "fields": [
   {
@@ -115,13 +117,24 @@
    "fieldname": "enable_bank_automation",
    "fieldtype": "Check",
    "label": "Bank Account"
+  },
+  {
+   "fieldname": "exclude_field_column",
+   "fieldtype": "Column Break",
+   "label": "Exclude Field"
+  },
+  {
+   "default": "0",
+   "fieldname": "item_code_automation",
+   "fieldtype": "Check",
+   "label": "Item Code"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-07-11 13:38:44.405237",
+ "modified": "2025-07-11 15:43:05.046014",
  "modified_by": "Administrator",
  "module": "Validation",
  "name": "Settings for Automation",
