@@ -69,17 +69,16 @@ function format_name(name) {
 }
 
 function check_automation_enabled(frm, callback) {
-    console.log("Checking automation enabled status");
     frappe.call({
-        method: 'frappe.client.get_value',
+        method: 'frappe.client.get_single_value',
         args: {
-            doctype: 'Automation Settings',
-            fieldname: 'custom_terms_and_conditions'
+            doctype: 'Settings for Automation',
+            field: 'custom_terms_and_conditions'
         },
         callback: function(response) {
-            console.log("Automation Settings response:", response);
-            const is_enabled = response.message ? response.message.custom_terms_and_conditions : false;
-            callback(is_enabled);
+            const is_enabled = response.message ? response.message : false;
+            console.log("Automation enabled?", is_enabled);
+            if (callback) callback(is_enabled);
         }
     });
 }
