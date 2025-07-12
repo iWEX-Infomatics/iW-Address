@@ -165,23 +165,23 @@ doctype_js = {
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
-# 	"all": [
-# 		"validation.tasks.all"
-# 	],
-# 	"daily": [
-# 		"validation.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"validation.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"validation.tasks.weekly"
-# 	],
-# 	"monthly": [
-# 		"validation.tasks.monthly"
-# 	],
-# }
+scheduler_events = {
+	# "all": [
+	# 	"validation.tasks.all"
+	# ],
+	"daily": [
+		"validation.validation.doctype.auto_delete_settings.auto_delete_settings.execute"
+	],
+	# "hourly": [
+	# 	"validation.tasks.hourly"
+	# ],
+	# "weekly": [
+	# 	"validation.tasks.weekly"
+	# ],
+	# "monthly": [
+	# 	"validation.tasks.monthly"
+	# ],
+}
 
 # Testing
 # -------
