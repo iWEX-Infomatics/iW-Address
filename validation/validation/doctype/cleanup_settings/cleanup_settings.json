@@ -1,0 +1,126 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-07-12 18:20:29.706131",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "more_info",
+  "section_break_kjle",
+  "manual_doctype",
+  "clear_all",
+  "column_break_pfmn",
+  "created_before",
+  "column_break_dybo",
+  "created_by",
+  "preview_count",
+  "column_break_gukq",
+  "doc_status",
+  "delete_now",
+  "section_break_knrw",
+  "enable_automatic_cleanup",
+  "cleanup_document_list"
+ ],
+ "fields": [
+  {
+   "fieldname": "section_break_kjle",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "manual_doctype",
+   "fieldtype": "Link",
+   "label": "Manual Doctype",
+   "options": "DocType"
+  },
+  {
+   "fieldname": "clear_all",
+   "fieldtype": "Button",
+   "label": "Clear All"
+  },
+  {
+   "fieldname": "column_break_pfmn",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "created_before",
+   "fieldtype": "Date",
+   "label": "Created Before"
+  },
+  {
+   "fieldname": "column_break_dybo",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "created_by",
+   "fieldtype": "Link",
+   "label": "Created by",
+   "options": "User"
+  },
+  {
+   "fieldname": "preview_count",
+   "fieldtype": "Button",
+   "label": "Preview Count"
+  },
+  {
+   "fieldname": "column_break_gukq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "doc_status",
+   "fieldtype": "Select",
+   "label": "Doc Status",
+   "options": "\nDraft\nSubmitted\nCancelled\nAll"
+  },
+  {
+   "fieldname": "delete_now",
+   "fieldtype": "Button",
+   "label": "Delete Now"
+  },
+  {
+   "fieldname": "more_info",
+   "fieldtype": "HTML",
+   "label": "More Info"
+  },
+  {
+   "fieldname": "section_break_knrw",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_automatic_cleanup",
+   "fieldtype": "Check",
+   "label": "Enable Automatic Cleanup"
+  },
+  {
+   "fieldname": "cleanup_document_list",
+   "fieldtype": "Table",
+   "label": "Cleanup Document List",
+   "options": "Cleanup Document"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2025-07-14 13:42:50.494931",
+ "modified_by": "Administrator",
+ "module": "Validation",
+ "name": "Cleanup Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

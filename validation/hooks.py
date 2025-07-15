@@ -58,7 +58,8 @@ doctype_js = {
     "Terms and Conditions" : "public/js/terms.js",
     "Payment Term" : "public/js/payment_terms.js",
     "Payment Terms Template" : "public/js/payment_term_template.js",
-    "Bank Account" : "public/js/bank_account.js"
+    "Bank Account" : "public/js/bank_account.js",
+    "Cleanup Settings": "public/js/cleanup_settings.js"
 }
 
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
@@ -170,7 +171,7 @@ scheduler_events = {
 	# 	"validation.tasks.all"
 	# ],
 	"daily": [
-		"validation.validation.doctype.auto_delete_settings.auto_delete_settings.execute"
+		"validation.validation.doctype.cleanup_settings.cleanup_settings.execute"
 	],
 	# "hourly": [
 	# 	"validation.tasks.hourly"

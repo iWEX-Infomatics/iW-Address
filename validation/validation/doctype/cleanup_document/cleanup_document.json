@@ -1,0 +1,70 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-07-12 18:14:44.394654",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "ref_doctype",
+  "clear_logs_after",
+  "column_break_wmpg",
+  "created_by",
+  "doc_status",
+  "enable_schedule"
+ ],
+ "fields": [
+  {
+   "fieldname": "ref_doctype",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Ref Doctype",
+   "options": "DocType"
+  },
+  {
+   "fieldname": "clear_logs_after",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Clear Logs after"
+  },
+  {
+   "fieldname": "column_break_wmpg",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "created_by",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Created by",
+   "options": "User"
+  },
+  {
+   "fieldname": "doc_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Doc Status",
+   "options": "\nDraft\nSubmitted\nCancelled\nAll"
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_schedule",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Enable Schedule"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-07-15 12:11:06.634550",
+ "modified_by": "Administrator",
+ "module": "Validation",
+ "name": "Cleanup Document",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
