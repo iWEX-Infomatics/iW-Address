@@ -28,42 +28,43 @@ frappe.ui.form.on('Item', {
     },
     item_name: function(frm) {
         if (frm.doc.custom_automate) {
-            console.log("ItemCode trigger activated and custom_automate is disabled");
+            console.log("Item Name trigger activated and custom_automate is enabled");
 
             check_item_automation_settings(function(settings) {
                 console.log("Automation Settings:", settings);
-                
-                if (settings.enable_item_automation) {
+
+                if (settings.enable_item_automation && !settings.item_name_automation) {
                     const formatted_name = format_name(frm.doc.item_name);
-                    console.log("Formatted Name:", formatted_name);
+                    console.log("Formatted Item Name:", formatted_name);
                     frm.set_value('item_name', formatted_name);
                 } else {
-                    console.log("Skipping formatting. Because either enable_item_automation is disabled or item_name is enabled.");
+                    console.log("Skipping formatting. Because either enable_item_automation is disabled or item_name_automation is enabled.");
                 }
             });
 
         } else {
-            console.log("custom_automate is enabled. Skipping Item Code trigger.");
+            console.log("custom_automate is disabled. Skipping Item Name trigger.");
         }
     },
+
     description: function(frm) {
         if (frm.doc.custom_automate) {
-            console.log("ItemCode trigger activated and custom_automate is disabled");
+            console.log("Description trigger activated and custom_automate is enabled");
 
             check_item_automation_settings(function(settings) {
                 console.log("Automation Settings:", settings);
-                
-                if (settings.enable_item_automation) {
+
+                if (settings.enable_item_automation && !settings.description_automation) {
                     const formatted_name = format_name(frm.doc.description);
-                    console.log("Formatted Name:", formatted_name);
+                    console.log("Formatted Description:", formatted_name);
                     frm.set_value('description', formatted_name);
                 } else {
-                    console.log("Skipping formatting. Because either enable_item_automation is disabled or description is enabled.");
+                    console.log("Skipping formatting. Because either enable_item_automation is disabled or description_automation is enabled.");
                 }
             });
 
         } else {
-            console.log("custom_automate is enabled. Skipping Item Code trigger.");
+            console.log("custom_automate is disabled. Skipping Description trigger.");
         }
     },
     after_save: function(frm) {
@@ -117,13 +118,38 @@ function check_item_automation_settings(callback) {
                 callback: function(response2) {
                     const item_code_automation = response2.message ? response2.message : 0;
 
-                    callback({
-                        enable_item_automation: enable_item_automation,
-                        item_code_automation: item_code_automation
+                    frappe.call({
+                        method: 'frappe.client.get_single_value',
+                        args: {
+                            doctype: 'Settings for Automation',
+                            field: 'item_name_automation'
+                        },
+                        callback: function(response3) {
+                            const item_name_automation = response3.message ? response3.message : 0;
+
+                            frappe.call({
+                                method: 'frappe.client.get_single_value',
+                                args: {
+                                    doctype: 'Settings for Automation',
+                                    field: 'description_automation'
+                                },
+                                callback: function(response4) {
+                                    const description_automation = response4.message ? response4.message : 0;
+
+                                    callback({
+                                        enable_item_automation: enable_item_automation,
+                                        item_code_automation: item_code_automation,
+                                        item_name_automation: item_name_automation,
+                                        description_automation: description_automation
+                                    });
+                                }
+                            });
+                        }
                     });
                 }
             });
         }
     });
 }
+
 

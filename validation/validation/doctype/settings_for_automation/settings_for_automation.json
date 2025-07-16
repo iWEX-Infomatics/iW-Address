@@ -22,7 +22,9 @@
   "custom_terms_and_conditions",
   "custom_payment_term_template",
   "exclude_field_column",
-  "item_code_automation"
+  "item_code_automation",
+  "item_name_automation",
+  "description_automation"
  ],
  "fields": [
   {
@@ -128,13 +130,25 @@
    "fieldname": "item_code_automation",
    "fieldtype": "Check",
    "label": "Item Code"
+  },
+  {
+   "default": "0",
+   "fieldname": "item_name_automation",
+   "fieldtype": "Check",
+   "label": "Item Name"
+  },
+  {
+   "default": "0",
+   "fieldname": "description_automation",
+   "fieldtype": "Check",
+   "label": "Description"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2025-07-11 15:43:05.046014",
+ "modified": "2025-07-16 09:43:57.956941",
  "modified_by": "Administrator",
  "module": "Validation",
  "name": "Settings for Automation",

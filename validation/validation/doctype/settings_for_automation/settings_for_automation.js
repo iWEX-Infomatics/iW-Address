@@ -1,5 +1,5 @@
 frappe.ui.form.on("Settings for Automation", {
-    refresh(frm) {
+    onload(frm) {
         if (!frm.doc.__unsaved) {
             frm.set_value('enable_item_automation', 1);
             frm.set_value('enable_bank_automation', 1);
