@@ -89,7 +89,7 @@ function format_name(name) {
 
     console.log("Formatting name:", name);
 
-    let formattedName = name.replace(/[\.-\/,0-9]/g, '');
+    let formattedName = name.replace(/[^a-zA-Z0-9\s(),\-\/]/g, '');
     formattedName = formattedName.trim().toLowerCase().replace(/\b(\w)/g, function(match) {
         return match.toUpperCase();
     });
