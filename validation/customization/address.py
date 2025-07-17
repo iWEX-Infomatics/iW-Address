@@ -12,8 +12,11 @@ def get_post_offices_api(pincode):
         return []
 
     url = f"https://api.postalpincode.in/pincode/{pincode}"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64;x64)"
+        }
     try:
-        resp = requests.get(url, timeout=5)
+        resp = requests.get(url, timeout=5, headers=headers)
         data = resp.json()
     except Exception:
         frappe.logger().error(f"Error fetching pincodes: {frappe.get_traceback()}")

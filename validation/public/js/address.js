@@ -16,7 +16,7 @@ frappe.ui.form.on('Address', {
             }
         }
     },
-    
+
     address_line1: function(frm) {
         if (frm.doc.custom_automate) {
             check_automation_enabled(frm, function(is_enabled) {
@@ -76,6 +76,7 @@ frappe.ui.form.on('Address', {
         }
     },
     pincode: function(frm) {
+        console.log("Pincode changed. Checking for post office automation.");
         if (!frm.doc.pincode) {
             frm.set_value('custom_post_office', '');
             frm.set_value('custom_taluk', '');
@@ -89,15 +90,22 @@ frappe.ui.form.on('Address', {
                 method: 'validation.customization.address.get_post_offices_api',
                 args: { pincode: frm.doc.pincode },
                 callback: function(r) {
+                    if (!r || r.exc || !Array.isArray(r.message)) {
+                        return;
+                    }
+                    console.log("Post office API response:", r.message);
                     const offices = r.message || [];
+                    console.log("Post offices fetched:", offices);
 
                     if (offices.length === 1) {
+                        console.log("Single post office found:", offices[0]);
                         frm.set_value('custom_post_office', offices[0].post_office);
                         frm.set_value('custom_taluk', offices[0].taluk);
                         frm.set_value('state', offices[0].state);
                         frm.set_value('county', offices[0].district  + ' DT');
                     }
                     else if (offices.length > 1) {
+                        console.log("Multiple post offices found:", offices);
                         let options = offices.map((o, i) => {
                             return { label: o.post_office, value: i };
                         });
