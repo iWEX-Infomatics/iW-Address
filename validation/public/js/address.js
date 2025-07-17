@@ -77,7 +77,6 @@ frappe.ui.form.on('Address', {
         }
     },
     pincode: function(frm) {
-<<<<<<< Updated upstream
         if (!frm.doc.pincode) {
             frm.set_value('custom_post_office', '');
             frm.set_value('custom_taluk', '');
@@ -89,11 +88,6 @@ frappe.ui.form.on('Address', {
         if (frm.doc.country === 'India' && frm.doc.pincode.length === 6) {
             frappe.call({
                 method: 'validation.customization.address.get_post_offices_api',
-=======
-        if (frm.doc.country === 'India' && frm.doc.pincode) {
-            frappe.call({
-                method: 'validation.customization.address.get_post_offices',
->>>>>>> Stashed changes
                 args: { pincode: frm.doc.pincode },
                 callback: function(r) {
                     const offices = r.message || [];
@@ -102,11 +96,7 @@ frappe.ui.form.on('Address', {
                         frm.set_value('custom_post_office', offices[0].post_office);
                         frm.set_value('custom_taluk', offices[0].taluk);
                         frm.set_value('state', offices[0].state);
-<<<<<<< Updated upstream
                         frm.set_value('county', offices[0].district  + ' DT');
-=======
-                        frm.set_value('county', offices[0].district);
->>>>>>> Stashed changes
                     }
                     else if (offices.length > 1) {
                         let options = offices.map((o, i) => {
@@ -123,11 +113,7 @@ frappe.ui.form.on('Address', {
                                     options: options
                                 }
                             ],
-<<<<<<< Updated upstream
                             primary_action_label: 'Insert',
-=======
-                            primary_action_label: 'Set',
->>>>>>> Stashed changes
                             primary_action(values) {
                                 if (values.selected_po === undefined || values.selected_po === '') {
                                     frappe.msgprint('Please select a Post Office.');
@@ -137,11 +123,7 @@ frappe.ui.form.on('Address', {
                                 frm.set_value('custom_post_office', sel.post_office);
                                 frm.set_value('custom_taluk', sel.taluk);
                                 frm.set_value('state', sel.state);
-<<<<<<< Updated upstream
                                 frm.set_value('county', sel.district + ' DT');
-=======
-                                frm.set_value('county', sel.district);
->>>>>>> Stashed changes
                                 d.hide();
                             }
                         });
@@ -149,11 +131,7 @@ frappe.ui.form.on('Address', {
                         d.show();
                     }
                     else {
-<<<<<<< Updated upstream
                             frappe.msgprint('No Post Office found for this Pincode');
-=======
-                        frappe.msgprint('No Post Office found for this Pincode');
->>>>>>> Stashed changes
                     }
                 }
             });
