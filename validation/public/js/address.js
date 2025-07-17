@@ -21,13 +21,15 @@ frappe.ui.form.on('Address', {
         if (frm.doc.custom_automate) {
             check_automation_enabled(frm, function(is_enabled) {
                 if (is_enabled) {
-                    frm.set_value('address_line1', format_name(frm.doc.address_line1));
+                    let formatted = format_address_line1(frm.doc.address_line1);
+                    frm.set_value('address_line1', formatted);
                 }
             });
         } else {
-            console.log("custom_automate is enabled. Skipping address_line1 trigger.");
+            console.log("custom_automate is disabled. Skipping address_line1 trigger.");
         }
     },
+
 
     city: function(frm) {
         if (frm.doc.custom_automate) {
@@ -168,6 +170,21 @@ function format_name(name) {
 
     return formattedName;
 }
+
+function format_address_line1(name) {
+    if (!name) return '';
+
+    let formattedName = name.replace(/[^a-zA-Z0-9\s#(),\/-]/g, '');
+
+    formattedName = formattedName.trim().toLowerCase().replace(/\b(\w)/g, function(match) {
+        return match.toUpperCase();
+    });
+
+    formattedName = formattedName.replace(/\s+/g, ' ');
+
+    return formattedName;
+}
+
 
 function check_automation_enabled(frm, callback) {
     frappe.call({
