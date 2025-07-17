@@ -41,7 +41,6 @@ frappe.ui.form.on('Address', {
         }
     },
 
-    // New fields added here
     custom_post_office: function(frm) {
         if (frm.doc.custom_automate) {
             check_automation_enabled(frm, function(is_enabled) {
