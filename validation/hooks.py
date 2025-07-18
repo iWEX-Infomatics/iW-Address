@@ -59,7 +59,10 @@ doctype_js = {
     "Payment Term" : "public/js/payment_terms.js",
     "Payment Terms Template" : "public/js/payment_term_template.js",
     "Bank Account" : "public/js/bank_account.js",
-    "Cleanup Settings": "public/js/cleanup_settings.js"
+    "Cleanup Settings": "public/js/cleanup_settings.js",
+    "Automate Default Values": "validation/validation/doctype/automate_default_values/automate_default_values.js",
+    "Party Default Values": "validation/validation/doctype/automate_default_values/automate_default_values.js"
+
 }
 
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
