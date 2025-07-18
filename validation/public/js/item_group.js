@@ -39,17 +39,21 @@ frappe.ui.form.on('Item Group', {
     }
 });
 
+
 function format_name(name) {
     if (!name) return '';
 
-    console.log("Formatting name:", name);
+    let formattedName = name.replace(/[^a-zA-Z\s]/g, '');
 
-    let formattedName = name.replace(/[\.-\/,0-9]/g, '');
-    formattedName = formattedName.trim().toLowerCase().replace(/\b(\w)/g, function(match) {
-        return match.toUpperCase();
-    });
-    formattedName = formattedName.replace(/\s+/g, ' ');
+    formattedName = formattedName.trim().toLowerCase().replace(/\s+/g, ' ');
     formattedName = formattedName.replace(/\(/g, ' (');
+
+    formattedName = formattedName.split(' ').map(word => {
+        if (word.length >= 3) {
+            return word.charAt(0).toUpperCase() + word.slice(1);
+        }
+        return word;
+    }).join(' ');
 
     return formattedName;
 }

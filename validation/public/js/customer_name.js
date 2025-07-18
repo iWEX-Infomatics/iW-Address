@@ -115,23 +115,21 @@ frappe.ui.form.on('Customer', {
     }
 });
 
+
 function format_name(name) {
     if (!name) return '';
 
-    console.log("Formatting name:", name);
+    let formattedName = name.replace(/[^a-zA-Z\s]/g, '');
 
-    // Remove all characters except letters, spaces, and hyphens
-    let formattedName = name.replace(/[^a-zA-Z\s\-]/g, ''); // Keep letters, spaces, and hyphens
+    formattedName = formattedName.trim().toLowerCase().replace(/\s+/g, ' ');
+    formattedName = formattedName.replace(/\(/g, ' (');
 
-    // Trim, lowercase, capitalize the first letter of each word, and remove extra spaces
-    formattedName = formattedName.trim().toLowerCase().replace(/\b(\w)/g, function(match) {
-        return match.toUpperCase();
-    });
-
-    // Remove any extra spaces between words
-    formattedName = formattedName.replace(/\s+/g, ' ');
-
-    console.log("Formatted name:", formattedName);
+    formattedName = formattedName.split(' ').map(word => {
+        if (word.length >= 3) {
+            return word.charAt(0).toUpperCase() + word.slice(1);
+        }
+        return word;
+    }).join(' ');
 
     return formattedName;
 }

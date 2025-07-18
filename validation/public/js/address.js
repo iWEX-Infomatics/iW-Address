@@ -42,7 +42,17 @@ frappe.ui.form.on('Address', {
             console.log("custom_automate is enabled. Skipping city trigger.");
         }
     },
-
+    address_title: function(frm) {
+        if (frm.doc.custom_automate) {
+            check_automation_enabled(frm, function(is_enabled) {
+                if (is_enabled) {
+                    frm.set_value('address_title', format_name(frm.doc.address_title));
+                }
+            });
+        } else {
+            console.log("custom_automate is enabled. Skipping address_title trigger.");
+        }
+    },
     custom_post_office: function(frm) {
         if (frm.doc.custom_automate) {
             check_automation_enabled(frm, function(is_enabled) {
@@ -161,29 +171,42 @@ before_save: function(frm) {
 function format_name(name) {
     if (!name) return '';
 
-    let formattedName = name.replace(/[^a-zA-Z\s]/g, ''); 
-    formattedName = formattedName.trim().toLowerCase().replace(/\b(\w)/g, function(match) {
-        return match.toUpperCase();
-    });
-    formattedName = formattedName.replace(/\s+/g, ' ');
+    let formattedName = name.replace(/[^a-zA-Z\s]/g, '');
+
+    formattedName = formattedName.trim().toLowerCase().replace(/\s+/g, ' ');
     formattedName = formattedName.replace(/\(/g, ' (');
+
+    formattedName = formattedName.split(' ').map(word => {
+        if (word.length >= 3) {
+            return word.charAt(0).toUpperCase() + word.slice(1);
+        }
+        return word;
+    }).join(' ');
 
     return formattedName;
 }
+
 
 function format_address_line1(name) {
     if (!name) return '';
 
+    // Allow A-Z, a-z, 0-9, space, # , / - ( )
     let formattedName = name.replace(/[^a-zA-Z0-9\s#(),\/-]/g, '');
 
-    formattedName = formattedName.trim().toLowerCase().replace(/\b(\w)/g, function(match) {
-        return match.toUpperCase();
-    });
+    // Trim, convert to lowercase, remove extra spaces
+    formattedName = formattedName.trim().toLowerCase().replace(/\s+/g, ' ');
 
-    formattedName = formattedName.replace(/\s+/g, ' ');
+    // Capitalize words only if length >= 3
+    formattedName = formattedName.split(' ').map(word => {
+        if (word.length >= 3) {
+            return word.charAt(0).toUpperCase() + word.slice(1);
+        }
+        return word;
+    }).join(' ');
 
     return formattedName;
 }
+
 
 
 function check_automation_enabled(frm, callback) {

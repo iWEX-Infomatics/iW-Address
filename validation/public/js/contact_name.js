@@ -71,17 +71,23 @@ function format_name(name) {
     if (!name) return '';
 
     // Remove all special characters except spaces
-    let formattedName = name.replace(/[^a-zA-Z\s]/g, ''); // Keep only letters and spaces
+    let formattedName = name.replace(/[^a-zA-Z\s]/g, '');
 
-    // Trim, lowercase, capitalize first letter of each word, and remove extra spaces
-    formattedName = formattedName.trim().toLowerCase().replace(/\b(\w)/g, function(match) {
-        return match.toUpperCase();
-    });
-    formattedName = formattedName.replace(/\s+/g, ' ');
+    // Trim, convert to lowercase, remove extra spaces
+    formattedName = formattedName.trim().toLowerCase().replace(/\s+/g, ' ');
     formattedName = formattedName.replace(/\(/g, ' (');
+
+    // Capitalize only if word length >= 3
+    formattedName = formattedName.split(' ').map(word => {
+        if (word.length >= 3) {
+            return word.charAt(0).toUpperCase() + word.slice(1);
+        }
+        return word; // Keep as is for short words
+    }).join(' ');
 
     return formattedName;
 }
+
 
 function update_full_name(frm) {
     let full_name = [frm.doc.first_name, frm.doc.middle_name, frm.doc.last_name]

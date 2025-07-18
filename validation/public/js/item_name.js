@@ -84,21 +84,24 @@ frappe.ui.form.on('Item', {
     }
 });
 
+
 function format_name(name) {
     if (!name) return '';
 
-    console.log("Formatting name:", name);
+    let formattedName = name.replace(/[^a-zA-Z\s]/g, '');
 
-    let formattedName = name.replace(/[^a-zA-Z0-9\s(),\-\/]/g, '');
-    formattedName = formattedName.trim().toLowerCase().replace(/\b(\w)/g, function(match) {
-        return match.toUpperCase();
-    });
-    formattedName = formattedName.replace(/\s+/g, ' ');
+    formattedName = formattedName.trim().toLowerCase().replace(/\s+/g, ' ');
     formattedName = formattedName.replace(/\(/g, ' (');
+
+    formattedName = formattedName.split(' ').map(word => {
+        if (word.length >= 3) {
+            return word.charAt(0).toUpperCase() + word.slice(1);
+        }
+        return word;
+    }).join(' ');
 
     return formattedName;
 }
-
 function check_item_automation_settings(callback) {
     frappe.call({
         method: 'frappe.client.get_single_value',
