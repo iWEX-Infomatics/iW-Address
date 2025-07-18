@@ -34,7 +34,7 @@ frappe.ui.form.on('Item', {
                 console.log("Automation Settings:", settings);
 
                 if (settings.enable_item_automation && !settings.item_name_automation) {
-                    const formatted_name = format_name(frm.doc.item_name);
+                    const formatted_name = format_item_name(frm.doc.item_name);
                     console.log("Formatted Item Name:", formatted_name);
                     frm.set_value('item_name', formatted_name);
                 } else {
@@ -83,6 +83,25 @@ frappe.ui.form.on('Item', {
         }
     }
 });
+
+function format_item_name(name) {
+    if (!name) return '';
+
+    // Allow letters, numbers, space, and hyphens only
+    let formattedName = name.replace(/[^a-zA-Z0-9\s\-]/g, '');
+
+    formattedName = formattedName.trim().toLowerCase().replace(/\s+/g, ' ');
+    formattedName = formattedName.replace(/\(/g, ' (');
+
+    formattedName = formattedName.split(' ').map(word => {
+        if (word.length >= 3) {
+            return word.charAt(0).toUpperCase() + word.slice(1);
+        }
+        return word;
+    }).join(' ');
+
+    return formattedName;
+}
 
 
 function format_name(name) {
