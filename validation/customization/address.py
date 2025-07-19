@@ -35,3 +35,40 @@ def get_post_offices_api(pincode):
         })
     return result
 
+
+
+
+def validate_address(doc, method):
+    matched = False
+    country_matched = False
+
+    # Get all child table rows from Automate Default Values
+    child_rows = frappe.get_all(
+        "Party Default Values",
+        fields=["country", "state"],
+        filters={"parenttype": "Automate Default Values"}
+    )
+
+    for row in child_rows:
+        if row.country == doc.country:
+            if row.state and row.state == doc.state:
+                doc.tax_category = "In-State"
+                matched = True
+                break
+            else:
+                country_matched = True
+
+    if not matched:
+        if country_matched:
+            doc.tax_category = "Out-State"
+        else:
+            doc.tax_category = "Overseas"
+
+
+
+def validate(doc, method=None):
+    for link in doc.links:
+        if link.link_doctype in ["Customer", "Supplier"]:
+            doc.is_shipping_address = 1
+            doc.is_primary_address = 1
+            break 

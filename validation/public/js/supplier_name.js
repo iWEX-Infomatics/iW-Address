@@ -5,6 +5,94 @@ frappe.ui.form.on('Supplier', {
             frm.set_value('custom_automate', 1); // Enable custom_automate for new forms
         }
     },
+    supplier_primary_address: function(frm) {
+        if (frm.doc.custom_automate !== 1 || !frm.doc.supplier_primary_address) return;
+
+        // Get Address document
+        frappe.call({
+            method: 'frappe.client.get',
+            args: {
+                doctype: 'Address',
+                name: frm.doc.supplier_primary_address
+            },
+            callback: function(res) {
+                if (res.message) {
+                    const address = res.message;
+                    const country = address.country;
+                    console.log("Country from primary address:", country);
+
+                    if (country === "India") {
+                        frm.set_value("default_currency", "INR");
+                        frm.set_value("default_price_list", "Standard Buying");
+
+                        // Get default company
+                        frappe.call({
+                            method: "frappe.client.get_value",
+                            args: {
+                                doctype: "Company",
+                                filters: {},
+                                fieldname: "name"
+                            },
+                            callback: function(r) {
+                                if (r.message) {
+                                    let company = r.message.name;
+
+                                    // Add a row to accounts if not present
+                                    if (!frm.doc.accounts || frm.doc.accounts.length === 0) {
+                                        let row = frm.add_child("accounts");
+                                        row.company = company;
+
+                                        // Get Receivable Account
+                                        frappe.call({
+                                            method: "frappe.client.get_list",
+                                            args: {
+                                                doctype: "Account",
+                                                filters: {
+                                                    company: company,
+                                                    account_type: "Receivable",
+                                                    root_type: "Asset",
+                                                    is_group: 0
+                                                },
+                                                fields: ["name"],
+                                                limit_page_length: 1
+                                            },
+                                            callback: function(res2) {
+                                                if (res2.message && res2.message.length > 0) {
+                                                    row.account = res2.message[0].name;
+                                                    frm.refresh_field("accounts");
+                                                }
+                                            }
+                                        });
+                                    }
+
+                                    // Get Default Bank Account
+                                    frappe.call({
+                                        method: "frappe.client.get_list",
+                                        args: {
+                                            doctype: "Bank Account",
+                                            filters: {
+                                                company: company,
+                                                is_default: 1,
+                                                is_company_account: 1
+                                            },
+                                            fields: ["name"],
+                                            limit_page_length: 1
+                                        },
+                                        callback: function(bank_res) {
+                                            if (bank_res.message && bank_res.message.length > 0) {
+                                                frm.set_value("default_bank_account", bank_res.message[0].name);
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+        });
+    }
+,   
     country: function(frm) {
         if (frm.doc.custom_automate !== 1 || !frm.doc.country) return;
 
@@ -133,12 +221,15 @@ function format_name(name) {
     const lowercaseWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
 
     let formattedName = name.replace(/[^a-zA-Z\s]/g, '');
+
     formattedName = formattedName.trim().replace(/\s+/g, ' ');
+
+    formattedName = formattedName.replace(/[,\s]+$/, '');
+
     formattedName = formattedName.replace(/\(/g, ' (');
 
     formattedName = formattedName.split(' ').map((word, index) => {
         if (word === word.toUpperCase()) {
-            // Manually typed in ALL CAPS — keep it
             return word;
         }
 

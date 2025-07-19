@@ -2,18 +2,38 @@ frappe.ui.form.on('Address', {
     onload: function(frm) {
         if (frm.is_new()) {
             console.log("Form is new. Initializing custom_automate.");
-            frm.set_value('custom_automate', 1); //Enable custom_automate for new forms
+            frm.set_value('custom_automate', 1);
         }
 
         check_automation_enabled(frm, function(is_enabled) {
             console.log("Script loaded, Automation enabled:", is_enabled);
         });
 
-        if (!frm.doc.address_title && frm.doc.links) {
-            let customer = frm.doc.links.find(link => link.link_doctype === "Customer");
-            if (customer) {
-                frm.set_value('address_title', customer.link_name);
-            }
+        // Trigger setting address title on load
+        frm.trigger('set_address_title');
+    },
+
+    city: function(frm) {
+        frm.trigger('set_address_title');
+    },
+
+    links_on_form_rendered: function(frm) {
+        frm.trigger('set_address_title');
+    },
+
+    set_address_title: function(frm) {
+        if (frm.doc.address_title || !frm.doc.city || !frm.doc.links || !frm.doc.links.length) {
+            return;
+        }
+
+        const city = frm.doc.city;
+        const customer = frm.doc.links.find(link => link.link_doctype === "Customer");
+        const supplier = frm.doc.links.find(link => link.link_doctype === "Supplier");
+
+        if (customer) {
+            frm.set_value('address_title', `${city} - ${customer.link_name}`);
+        } else if (supplier) {
+            frm.set_value('address_title', `${city} - ${supplier.link_name}`);
         }
     },
 
@@ -174,12 +194,15 @@ function format_name(name) {
     const lowercaseWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
 
     let formattedName = name.replace(/[^a-zA-Z\s]/g, '');
+
     formattedName = formattedName.trim().replace(/\s+/g, ' ');
+
+    formattedName = formattedName.replace(/[,\s]+$/, '');
+
     formattedName = formattedName.replace(/\(/g, ' (');
 
     formattedName = formattedName.split(' ').map((word, index) => {
         if (word === word.toUpperCase()) {
-            // Manually typed in ALL CAPS — keep it
             return word;
         }
 
@@ -196,7 +219,6 @@ function format_name(name) {
 
     return formattedName;
 }
-
 
 
 function format_address_line1(name) {
@@ -204,15 +226,17 @@ function format_address_line1(name) {
 
     const lowercaseWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
 
-    // Allow A-Z, a-z, 0-9, space, # , / - ( )
+    // Allow only A-Z, a-z, 0-9, space, # , / - ( )
     let formattedName = name.replace(/[^a-zA-Z0-9\s#(),\/-]/g, '');
 
-    // Trim and normalize spaces (but preserve original word case)
+    // Trim, normalize spaces, and remove trailing comma/space
     formattedName = formattedName.trim().replace(/\s+/g, ' ');
+    formattedName = formattedName.replace(/[,\s]+$/, '');  // <-- added line
 
+    // Capitalization logic
     formattedName = formattedName.split(' ').map((word, index) => {
         if (word === word.toUpperCase()) {
-            // Keep fully UPPERCASE words (e.g. "DLF", "USA")
+            // Preserve acronyms like "DLF", "USA"
             return word;
         }
 
@@ -229,7 +253,6 @@ function format_address_line1(name) {
 
     return formattedName;
 }
-
 
 
 

@@ -85,20 +85,28 @@ frappe.ui.form.on('Item', {
 });
 
 
-function format_item_name(name) {
+async function format_item_name(name) {
     if (!name) return '';
+
+    // Wait for 5 seconds
+    await new Promise(resolve => setTimeout(resolve, 5000));
 
     const lowercaseWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
 
     // Allow only letters, numbers, spaces, and hyphens
     let formattedName = name.replace(/[^a-zA-Z0-9\s\-]/g, '');
 
+    // Trim start/end, normalize spaces
     formattedName = formattedName.trim().replace(/\s+/g, ' ');
+
+    // Remove trailing comma or space
+    formattedName = formattedName.replace(/[,\s]+$/, '');
+
+    // Add space before opening bracket if needed
     formattedName = formattedName.replace(/\(/g, ' (');
 
     formattedName = formattedName.split(' ').map((word, index) => {
         if (word === word.toUpperCase()) {
-            // Manually typed uppercase word — keep as-is
             return word;
         }
 
@@ -115,9 +123,6 @@ function format_item_name(name) {
 
     return formattedName;
 }
-
-
-
 
 function format_name(name) {
     if (!name) return '';
@@ -125,12 +130,15 @@ function format_name(name) {
     const lowercaseWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
 
     let formattedName = name.replace(/[^a-zA-Z\s]/g, '');
+
     formattedName = formattedName.trim().replace(/\s+/g, ' ');
+
+    formattedName = formattedName.replace(/[,\s]+$/, '');
+
     formattedName = formattedName.replace(/\(/g, ' (');
 
     formattedName = formattedName.split(' ').map((word, index) => {
         if (word === word.toUpperCase()) {
-            // Manually typed in ALL CAPS — keep it
             return word;
         }
 
@@ -147,6 +155,8 @@ function format_name(name) {
 
     return formattedName;
 }
+
+
 function check_item_automation_settings(callback) {
     frappe.call({
         method: 'frappe.client.get_single_value',

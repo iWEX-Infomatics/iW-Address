@@ -97,12 +97,12 @@ frappe.ui.form.on('Customer', {
         if (frm.doc.custom_automate) {
             check_automation_enabled(frm, function(is_enabled) {
                 if (is_enabled) {
-                    const formatted_name = format_name(frm.doc.customer_name);
+                    const formatted_name = format_name_with_numbers(frm.doc.customer_name);
                     frm.set_value('customer_name', formatted_name);
                 }
             });
         } else {
-            console.log("custom_automate is enabled.  Customer Name trigger.");
+            console.log("custom_automate is enabled. Customer Name trigger.");
         }
     },
 
@@ -143,12 +143,15 @@ function format_name(name) {
     const lowercaseWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
 
     let formattedName = name.replace(/[^a-zA-Z\s]/g, '');
+
     formattedName = formattedName.trim().replace(/\s+/g, ' ');
+
+    formattedName = formattedName.replace(/[,\s]+$/, '');
+
     formattedName = formattedName.replace(/\(/g, ' (');
 
     formattedName = formattedName.split(' ').map((word, index) => {
         if (word === word.toUpperCase()) {
-            // Manually typed in ALL CAPS — keep it
             return word;
         }
 
@@ -165,6 +168,38 @@ function format_name(name) {
 
     return formattedName;
 }
+
+function format_name_with_numbers(name) {
+    if (!name) return '';
+
+    const lowercaseWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
+
+    // Allow letters, numbers, and spaces
+    let formattedName = name.replace(/[^a-zA-Z0-9\s]/g, '');
+
+    formattedName = formattedName.trim().replace(/\s+/g, ' ');
+    formattedName = formattedName.replace(/[,\s]+$/, '');
+    formattedName = formattedName.replace(/\(/g, ' (');
+
+    formattedName = formattedName.split(' ').map((word, index) => {
+        if (word === word.toUpperCase()) {
+            return word;
+        }
+
+        const lowerWord = word.toLowerCase();
+
+        if (lowercaseWords.includes(lowerWord)) {
+            return lowerWord;
+        } else if (word.length >= 4) {
+            return lowerWord.charAt(0).toUpperCase() + lowerWord.slice(1);
+        }
+
+        return lowerWord;
+    }).join(' ');
+
+    return formattedName;
+}
+
 
 function check_automation_enabled(frm, callback) {
     frappe.call({

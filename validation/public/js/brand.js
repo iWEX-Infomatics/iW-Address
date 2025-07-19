@@ -59,12 +59,15 @@ function format_name(name) {
     const lowercaseWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
 
     let formattedName = name.replace(/[^a-zA-Z\s]/g, '');
+
     formattedName = formattedName.trim().replace(/\s+/g, ' ');
+
+    formattedName = formattedName.replace(/[,\s]+$/, '');
+
     formattedName = formattedName.replace(/\(/g, ' (');
 
     formattedName = formattedName.split(' ').map((word, index) => {
         if (word === word.toUpperCase()) {
-            // Manually typed in ALL CAPS — keep it
             return word;
         }
 
@@ -81,7 +84,6 @@ function format_name(name) {
 
     return formattedName;
 }
-
 
 function check_automation_enabled(frm, callback) {
     frappe.call({
