@@ -8,7 +8,7 @@ frappe.ui.form.on('Automate Default Values', {
                 set_customer_fields(frm, cdt, cdn);
                 set_supplier_fields(frm, cdt, cdn);
                 set_default_bank_account(frm, cdt, cdn);
-            });
+             });
         }
     }
 });
@@ -142,3 +142,99 @@ function set_default_bank_account(frm, cdt, cdn) {
         }
     });
 }
+
+
+
+
+
+frappe.ui.form.on('Default Item Values', {
+    item_group: function(frm, cdt, cdn) {
+        set_defaults_based_on_item_group(frm, cdt, cdn);
+    },
+    allow_purchase: function(frm, cdt, cdn) {
+        set_defaults_based_on_item_group(frm, cdt, cdn);
+    },
+    allow_sales: function(frm, cdt, cdn) {
+        set_defaults_based_on_item_group(frm, cdt, cdn);
+    }
+});
+
+function set_defaults_based_on_item_group(frm, cdt, cdn) {
+    let row = locals[cdt][cdn];
+    const is_service = row.item_group === "Is Service Item";
+
+    if (!row.company) return;
+
+    frappe.db.get_value("Company", row.company, "abbr").then(res => {
+        if (!res.message) return;
+
+        const abbr = res.message.abbr;
+        const cost_center = `${row.company} - ${abbr}`;
+
+        const get_price_list = (type) => {
+            return frappe.db.get_list("Price List", {
+                filters: {
+                    [type]: 1,
+                    currency: "INR"
+                },
+                limit: 1
+            }).then(res => res.length ? res[0].name : '');
+        };
+
+        const get_account_exact = (account_prefix) => {
+            const full_name = `${account_prefix} - ${abbr}`;
+            return frappe.db.get_value("Account", full_name, "name")
+                .then(res => res && res.message ? res.message.name : '');
+        };
+
+        let promises = [];
+
+        if (is_service && row.allow_purchase && row.allow_sales) {
+            // Service + Both checked
+            promises = [
+                get_price_list("selling"),
+                get_account_exact("Service"),
+                get_account_exact("Service")
+            ];
+        } else if (!is_service && row.allow_purchase && row.allow_sales) {
+            // Not service + both checked
+            promises = [
+                get_price_list("selling"),
+                get_account_exact("Cost of Goods Sold"),
+                get_account_exact("Sales")
+            ];
+        } else if (!is_service && row.allow_purchase) {
+            // Only purchase
+            promises = [
+                get_price_list("buying"),
+                get_account_exact("Cost of Goods Sold"),
+                get_account_exact("Sales")
+            ];
+        } else if (!is_service && row.allow_sales) {
+            // Only sales
+            promises = [
+                get_price_list("buying"),
+                get_account_exact("Cost of Goods Sold"),
+                get_account_exact("Sales")
+            ];
+        }
+
+        Promise.all(promises).then(([price_list, expense_account, income_account]) => {
+            if (price_list) {
+                frappe.model.set_value(cdt, cdn, "default_price_list", price_list);
+            }
+
+            if (expense_account) {
+                frappe.model.set_value(cdt, cdn, "default_expense_account", expense_account);
+            }
+
+            if (income_account) {
+                frappe.model.set_value(cdt, cdn, "default_income_account", income_account);
+            }
+
+            frappe.model.set_value(cdt, cdn, "default_buying_cost_center", cost_center);
+            frappe.model.set_value(cdt, cdn, "default_selling_cost_center", cost_center);
+        });
+    });
+}
+

@@ -64,6 +64,26 @@ frappe.ui.form.on('Customer', {
                                             }
                                         });
                                     }
+
+                                    // Get Default Bank Account
+                                    frappe.call({
+                                        method: "frappe.client.get_list",
+                                        args: {
+                                            doctype: "Bank Account",
+                                            filters: {
+                                                company: company,
+                                                is_default: 1,
+                                                is_company_account: 1
+                                            },
+                                            fields: ["name"],
+                                            limit_page_length: 1
+                                        },
+                                        callback: function(bank_res) {
+                                            if (bank_res.message && bank_res.message.length > 0) {
+                                                frm.set_value("default_bank_account", bank_res.message[0].name);
+                                            }
+                                        }
+                                    });
                                 }
                             }
                         });
@@ -71,7 +91,8 @@ frappe.ui.form.on('Customer', {
                 }
             }
         });
-    },
+    }
+,
     customer_name: function(frm) {
         if (frm.doc.custom_automate) {
             check_automation_enabled(frm, function(is_enabled) {
@@ -119,16 +140,27 @@ frappe.ui.form.on('Customer', {
 function format_name(name) {
     if (!name) return '';
 
-    let formattedName = name.replace(/[^a-zA-Z\s]/g, '');
+    const lowercaseWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
 
-    formattedName = formattedName.trim().toLowerCase().replace(/\s+/g, ' ');
+    let formattedName = name.replace(/[^a-zA-Z\s]/g, '');
+    formattedName = formattedName.trim().replace(/\s+/g, ' ');
     formattedName = formattedName.replace(/\(/g, ' (');
 
-    formattedName = formattedName.split(' ').map(word => {
-        if (word.length >= 3) {
-            return word.charAt(0).toUpperCase() + word.slice(1);
+    formattedName = formattedName.split(' ').map((word, index) => {
+        if (word === word.toUpperCase()) {
+            // Manually typed in ALL CAPS — keep it
+            return word;
         }
-        return word;
+
+        const lowerWord = word.toLowerCase();
+
+        if (lowercaseWords.includes(lowerWord)) {
+            return lowerWord;
+        } else if (word.length >= 4) {
+            return lowerWord.charAt(0).toUpperCase() + lowerWord.slice(1);
+        }
+
+        return lowerWord;
     }).join(' ');
 
     return formattedName;

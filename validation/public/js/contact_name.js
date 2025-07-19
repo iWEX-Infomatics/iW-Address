@@ -70,24 +70,31 @@ frappe.ui.form.on('Contact', {
 function format_name(name) {
     if (!name) return '';
 
-    // Remove all special characters except spaces
-    let formattedName = name.replace(/[^a-zA-Z\s]/g, '');
+    const lowercaseWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
 
-    // Trim, convert to lowercase, remove extra spaces
-    formattedName = formattedName.trim().toLowerCase().replace(/\s+/g, ' ');
+    let formattedName = name.replace(/[^a-zA-Z\s]/g, '');
+    formattedName = formattedName.trim().replace(/\s+/g, ' ');
     formattedName = formattedName.replace(/\(/g, ' (');
 
-    // Capitalize only if word length >= 3
-    formattedName = formattedName.split(' ').map(word => {
-        if (word.length >= 3) {
-            return word.charAt(0).toUpperCase() + word.slice(1);
+    formattedName = formattedName.split(' ').map((word, index) => {
+        if (word === word.toUpperCase()) {
+            // Manually typed in ALL CAPS — keep it
+            return word;
         }
-        return word; // Keep as is for short words
+
+        const lowerWord = word.toLowerCase();
+
+        if (lowercaseWords.includes(lowerWord)) {
+            return lowerWord;
+        } else if (word.length >= 4) {
+            return lowerWord.charAt(0).toUpperCase() + lowerWord.slice(1);
+        }
+
+        return lowerWord;
     }).join(' ');
 
     return formattedName;
 }
-
 
 function update_full_name(frm) {
     let full_name = [frm.doc.first_name, frm.doc.middle_name, frm.doc.last_name]

@@ -171,41 +171,65 @@ before_save: function(frm) {
 function format_name(name) {
     if (!name) return '';
 
-    let formattedName = name.replace(/[^a-zA-Z\s]/g, '');
+    const lowercaseWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
 
-    formattedName = formattedName.trim().toLowerCase().replace(/\s+/g, ' ');
+    let formattedName = name.replace(/[^a-zA-Z\s]/g, '');
+    formattedName = formattedName.trim().replace(/\s+/g, ' ');
     formattedName = formattedName.replace(/\(/g, ' (');
 
-    formattedName = formattedName.split(' ').map(word => {
-        if (word.length >= 3) {
-            return word.charAt(0).toUpperCase() + word.slice(1);
+    formattedName = formattedName.split(' ').map((word, index) => {
+        if (word === word.toUpperCase()) {
+            // Manually typed in ALL CAPS — keep it
+            return word;
         }
-        return word;
+
+        const lowerWord = word.toLowerCase();
+
+        if (lowercaseWords.includes(lowerWord)) {
+            return lowerWord;
+        } else if (word.length >= 4) {
+            return lowerWord.charAt(0).toUpperCase() + lowerWord.slice(1);
+        }
+
+        return lowerWord;
     }).join(' ');
 
     return formattedName;
 }
+
 
 
 function format_address_line1(name) {
     if (!name) return '';
 
+    const lowercaseWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
+
     // Allow A-Z, a-z, 0-9, space, # , / - ( )
     let formattedName = name.replace(/[^a-zA-Z0-9\s#(),\/-]/g, '');
 
-    // Trim, convert to lowercase, remove extra spaces
-    formattedName = formattedName.trim().toLowerCase().replace(/\s+/g, ' ');
+    // Trim and normalize spaces (but preserve original word case)
+    formattedName = formattedName.trim().replace(/\s+/g, ' ');
 
-    // Capitalize words only if length >= 3
-    formattedName = formattedName.split(' ').map(word => {
-        if (word.length >= 3) {
-            return word.charAt(0).toUpperCase() + word.slice(1);
+    formattedName = formattedName.split(' ').map((word, index) => {
+        if (word === word.toUpperCase()) {
+            // Keep fully UPPERCASE words (e.g. "DLF", "USA")
+            return word;
         }
-        return word;
+
+        const lowerWord = word.toLowerCase();
+
+        if (lowercaseWords.includes(lowerWord)) {
+            return lowerWord;
+        } else if (word.length >= 4) {
+            return lowerWord.charAt(0).toUpperCase() + lowerWord.slice(1);
+        }
+
+        return lowerWord;
     }).join(' ');
 
     return formattedName;
 }
+
 
 
 
