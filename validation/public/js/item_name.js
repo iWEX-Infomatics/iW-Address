@@ -85,11 +85,8 @@ frappe.ui.form.on('Item', {
 });
 
 
-async function format_item_name(name) {
+function format_item_name(name) {
     if (!name) return '';
-
-    // Wait for 5 seconds
-    await new Promise(resolve => setTimeout(resolve, 5000));
 
     const lowercaseWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
 
@@ -99,7 +96,7 @@ async function format_item_name(name) {
     // Trim start/end, normalize spaces
     formattedName = formattedName.trim().replace(/\s+/g, ' ');
 
-    // Remove trailing comma or space
+    // Remove trailing commas or spaces
     formattedName = formattedName.replace(/[,\s]+$/, '');
 
     // Add space before opening bracket if needed
@@ -107,6 +104,7 @@ async function format_item_name(name) {
 
     formattedName = formattedName.split(' ').map((word, index) => {
         if (word === word.toUpperCase()) {
+            // Manually typed uppercase word — keep as-is
             return word;
         }
 
@@ -123,6 +121,7 @@ async function format_item_name(name) {
 
     return formattedName;
 }
+
 
 function format_name(name) {
     if (!name) return '';
