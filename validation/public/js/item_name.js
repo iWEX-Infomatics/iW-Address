@@ -14,7 +14,7 @@ frappe.ui.form.on('Item', {
                 console.log("Automation Settings:", settings);
                 
                 if (settings.enable_item_automation && !settings.item_code_automation) {
-                    const formatted_name = format_item_code(frm.doc.item_code);
+                    const formatted_name = format_name(frm.doc.item_code);
                     console.log("Formatted Name:", formatted_name);
                     frm.set_value('item_code', formatted_name);
                 } else {
@@ -49,22 +49,22 @@ frappe.ui.form.on('Item', {
 
     description: function(frm) {
         if (frm.doc.custom_automate) {
-            console.log("Description trigger activated and custom_automate is enabled");
+            console.log("ItemCode trigger activated and custom_automate is disabled");
 
             check_item_automation_settings(function(settings) {
                 console.log("Automation Settings:", settings);
-
-                if (settings.enable_item_automation && !settings.description_automation) {
+                
+                if (settings.enable_item_automation && !settings.item_code_automation) {
                     const formatted_name = format_name(frm.doc.description);
-                    console.log("Formatted Description:", formatted_name);
+                    console.log("Formatted Name:", formatted_name);
                     frm.set_value('description', formatted_name);
                 } else {
-                    console.log("Skipping formatting. Because either enable_item_automation is disabled or description_automation is enabled.");
+                    console.log("Skipping formatting. Because either enable_item_automation is disabled or item_code_automation is enabled.");
                 }
             });
 
         } else {
-            console.log("custom_automate is disabled. Skipping Description trigger.");
+            console.log("custom_automate is enabled. Skipping Item Code trigger.");
         }
     },
     after_save: function(frm) {
@@ -128,7 +128,7 @@ function format_name(name) {
 
     const lowercaseWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
 
-    let formattedName = name.replace(/[^a-zA-Z\s]/g, '');
+    let formattedName = name.replace(/[^a-zA-Z0-9\s\-]/g, '');
 
     formattedName = formattedName.trim().replace(/\s+/g, ' ');
 
@@ -155,40 +155,6 @@ function format_name(name) {
     return formattedName;
 }
 
-function format_item_code(name) {
-    if (!name) return '';
-
-    const lowercaseWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
-
-    //  Allow letters, numbers, and spaces only
-    let formattedName = name.replace(/[^a-zA-Z0-9\s\-]/g, '');
-
-    // Normalize spacing and remove trailing commas/spaces
-    formattedName = formattedName.trim().replace(/\s+/g, ' ');
-    formattedName = formattedName.replace(/[,\s]+$/, '');
-
-    // Add space before opening bracket if needed (optional)
-    formattedName = formattedName.replace(/\(/g, ' (');
-
-    // Capitalization logic
-    formattedName = formattedName.split(' ').map((word, index) => {
-        if (word === word.toUpperCase()) {
-            return word; // Keep uppercase as-is
-        }
-
-        const lowerWord = word.toLowerCase();
-
-        if (lowercaseWords.includes(lowerWord)) {
-            return lowerWord;
-        } else if (word.length >= 4) {
-            return lowerWord.charAt(0).toUpperCase() + lowerWord.slice(1);
-        }
-
-        return lowerWord;
-    }).join(' ');
-
-    return formattedName;
-}
 
 
 function check_item_automation_settings(callback) {
