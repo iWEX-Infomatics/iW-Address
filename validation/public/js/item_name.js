@@ -37,6 +37,7 @@ frappe.ui.form.on('Item', {
                     const formatted_name = format_item_name(frm.doc.item_name);
                     console.log("Formatted Item Name:", formatted_name);
                     frm.set_value('item_name', formatted_name);
+                    console.log("Item Name has been formatted and set.");
                 } else {
                     console.log("Skipping formatting. Because either enable_item_automation is disabled or item_name_automation is enabled.");
                 }
@@ -90,21 +91,16 @@ function format_item_name(name) {
 
     const lowercaseWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
 
-    // Allow only letters, numbers, spaces, and hyphens
     let formattedName = name.replace(/[^a-zA-Z0-9\s\-_]/g, '');
 
-    // Trim start/end, normalize spaces
     formattedName = formattedName.trim().replace(/\s+/g, ' ');
 
-    // Remove trailing commas or spaces
     formattedName = formattedName.replace(/[,\s]+$/, '');
 
-    // Add space before opening bracket if needed
     formattedName = formattedName.replace(/\(/g, ' (');
 
     formattedName = formattedName.split(' ').map((word, index) => {
         if (word === word.toUpperCase()) {
-            // Manually typed uppercase word — keep as-is
             return word;
         }
 
