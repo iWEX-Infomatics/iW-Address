@@ -14,7 +14,7 @@ frappe.ui.form.on('Item', {
                 console.log("Automation Settings:", settings);
                 
                 if (settings.enable_item_automation && !settings.item_code_automation) {
-                    const formatted_name = format_name(frm.doc.item_code);
+                    const formatted_name = format_item_code(frm.doc.item_code);
                     console.log("Formatted Name:", formatted_name);
                     frm.set_value('item_code', formatted_name);
                 } else {
@@ -91,7 +91,7 @@ function format_item_name(name) {
     const lowercaseWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
 
     // Allow only letters, numbers, spaces, and hyphens
-    let formattedName = name.replace(/[^a-zA-Z0-9\s\-]/g, '');
+    let formattedName = name.replace(/[^a-zA-Z0-9\s\-_]/g, '');
 
     // Trim start/end, normalize spaces
     formattedName = formattedName.trim().replace(/\s+/g, ' ');
@@ -139,6 +139,41 @@ function format_name(name) {
     formattedName = formattedName.split(' ').map((word, index) => {
         if (word === word.toUpperCase()) {
             return word;
+        }
+
+        const lowerWord = word.toLowerCase();
+
+        if (lowercaseWords.includes(lowerWord)) {
+            return lowerWord;
+        } else if (word.length >= 4) {
+            return lowerWord.charAt(0).toUpperCase() + lowerWord.slice(1);
+        }
+
+        return lowerWord;
+    }).join(' ');
+
+    return formattedName;
+}
+
+function format_item_code(name) {
+    if (!name) return '';
+
+    const lowercaseWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
+
+    //  Allow letters, numbers, and spaces only
+    let formattedName = name.replace(/[^a-zA-Z0-9\s]/g, '');
+
+    // Normalize spacing and remove trailing commas/spaces
+    formattedName = formattedName.trim().replace(/\s+/g, ' ');
+    formattedName = formattedName.replace(/[,\s]+$/, '');
+
+    // Add space before opening bracket if needed (optional)
+    formattedName = formattedName.replace(/\(/g, ' (');
+
+    // Capitalization logic
+    formattedName = formattedName.split(' ').map((word, index) => {
+        if (word === word.toUpperCase()) {
+            return word; // Keep uppercase as-is
         }
 
         const lowerWord = word.toLowerCase();
