@@ -1,0 +1,24 @@
+[
+ {
+  "docstatus": 0,
+  "doctype": "Client Script",
+  "dt": "Item",
+  "enabled": 1,
+  "modified": "2025-07-21 16:22:11.926781",
+  "module": "Validation",
+  "name": "Item concatenation",
+  "script": "frappe.ui.form.on('Item', {\r\n    onload(frm){\r\n       frm.set_value(\"item_name\", \"\");\r\n    },\r\n    refresh(frm) {\r\n        update_fields(frm);\r\n    },\r\n    custom_spice: update_fields,\r\n    custom_qty: update_fields,\r\n    custom_uom: update_fields,\r\n    custom_group_abbr: update_fields,\r\n    custom_packing_type: update_fields,\r\n    custom_packing_type_abbr: update_fields\r\n});\r\n\r\nfunction update_fields(frm) {\r\n    const groupAbbr = frm.doc.custom_group_abbr || \"\";\r\n    let spice = frm.doc.custom_spice || \"\";\r\n    const qty = frm.doc.custom_qty || \"\";\r\n    const uom = frm.doc.custom_uom || \"\";\r\n    const packingType = frm.doc.custom_packing_type || \"\";\r\n    const packingAbbr = frm.doc.custom_packing_type_abbr || \"\";\r\n\r\n    // Skip update if nothing is filled\r\n    const hasValues = groupAbbr || spice || qty || uom || packingAbbr;\r\n    if (!hasValues) {\r\n        frm.set_value(\"item_name\", \"\");\r\n        frm.set_value(\"description\", \"\");\r\n        return;\r\n    }\r\n\r\n    // Remove groupAbbr from spice if it's present\r\n    if (groupAbbr) {\r\n        const regex = new RegExp(groupAbbr, 'ig');\r\n        spice = spice.replace(regex, '').trim();\r\n    }\r\n\r\n    const itemName = `${groupAbbr} - ${spice} - ${qty}${uom} ${packingAbbr}`.replace(/\\s+/g, ' ').trim();\r\n    const description = `${frm.doc.custom_spice || \"\"} ${qty}${uom} ${packingType}`.replace(/\\s+/g, ' ').trim();\r\n\r\n    frm.set_value(\"item_name\", itemName);\r\n    frm.set_value(\"description\", description);\r\n}\r\n",
+  "view": "Form"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Client Script",
+  "dt": "Item",
+  "enabled": 1,
+  "modified": "2025-07-21 16:33:25.067774",
+  "module": "Validation",
+  "name": "Autofill Item Code",
+  "script": "frappe.ui.form.on('Item', {\n    onload: function(frm) {\n        // Check if it's a new item and custom_group_abbr is not empty\n        if (frm.is_new() && frm.doc.custom_group_abbr) {\n            generate_item_code(frm);\n        }\n    },\n    \n    item_group: function(frm) {\n        // When item group changes, regenerate item code if custom_group_abbr exists\n        if (frm.doc.custom_group_abbr) {\n            generate_item_code(frm);\n        }\n    },\n    \n    custom_group_abbr: function(frm) {\n        // When custom_group_abbr changes, generate item code\n        if (frm.doc.custom_group_abbr) {\n            generate_item_code(frm);\n        }\n    }\n});\n\nfunction generate_item_code(frm) {\n    // Get the abbreviation from custom_group_abbr\n    let abbr = frm.doc.custom_group_abbr;\n    \n    if (!abbr) return;\n    \n    // Call server method to get the last sequence number\n    frappe.call({\n        method: \"frappe.client.get_list\",\n        args: {\n            doctype: \"Item\",\n            filters: [\n                [\"item_group\", \"=\", frm.doc.item_group],\n                [\"item_code\", \"like\", abbr + \"-%\"]\n            ],\n            fields: [\"item_code\"],\n            order_by: \"item_code desc\",\n            limit_page_length: 1\n        },\n        callback: function(r) {\n            let new_sequence = \"001\";  // Default starting sequence\n            \n            if (r.message && r.message.length > 0) {\n                // Extract the last sequence number and increment it\n                let last_item_code = r.message[0].item_code;\n                let last_sequence = last_item_code.split('-')[1];\n                let next_sequence = parseInt(last_sequence) + 1;\n                new_sequence = String(next_sequence).padStart(3, '0');\n            }\n            \n            // Set the new item code\n            let new_item_code = `${abbr}-${new_sequence}`;\n            frm.set_value('item_code', new_item_code);\n        }\n    });\n}",
+  "view": "Form"
+ }
+]

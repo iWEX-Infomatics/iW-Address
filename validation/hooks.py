@@ -5,6 +5,14 @@ app_description = "An App for Validation for Name Fields"
 app_email = "emails@iwex.in"
 app_license = "mit"
 
+
+override_whitelisted_methods = {
+    "frappe.utils.change_log.get_versions": "validation.overrides.get_versions.custom_get_app_versions"
+}
+
+
+
+
 # Apps
 # ------------------
 
@@ -284,6 +292,12 @@ fixtures = [
     },
         {
         "doctype": "Property Setter",
+        "filters": [
+            ["module", "=", "Validation"],
+        ]
+    },
+            {
+        "doctype": "Client Script",
         "filters": [
             ["module", "=", "Validation"],
         ]
