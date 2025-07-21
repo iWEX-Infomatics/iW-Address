@@ -161,7 +161,7 @@ function format_item_code(name) {
     const lowercaseWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
 
     //  Allow letters, numbers, and spaces only
-    let formattedName = name.replace(/[^a-zA-Z0-9\s]/g, '');
+    let formattedName = name.replace(/[^a-zA-Z0-9\s\-]/g, '');
 
     // Normalize spacing and remove trailing commas/spaces
     formattedName = formattedName.trim().replace(/\s+/g, ' ');
