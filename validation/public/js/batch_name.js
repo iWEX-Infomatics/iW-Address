@@ -19,18 +19,18 @@ frappe.ui.form.on('Batch', {
             console.log("batch_id:",corrected_batch_id)
         }
     },
-    after_save: function(frm) {
-        if (!frm.doc.custom_automate) {
-            frm.set_value('custom_automate', 1); // Enable custom_automate after the first save
+    // after_save: function(frm) {
+    //     if (!frm.doc.custom_automate) {
+    //         frm.set_value('custom_automate', 1); // Enable custom_automate after the first save
 
-            // Save the form again to persist the change
-            frm.save()
-                .then(() => {
-                    console.log("custom_automate has been enabled and saved.");
-                })
-                .catch((error) => {
-                    console.error("Error while saving the form after enabling custom_automate:", error);
-                });
-        }
-    }
+    //         // Save the form again to persist the change
+    //         frm.save()
+    //             .then(() => {
+    //                 console.log("custom_automate has been enabled and saved.");
+    //             })
+    //             .catch((error) => {
+    //                 console.error("Error while saving the form after enabling custom_automate:", error);
+    //             });
+    //     }
+    // }
 });

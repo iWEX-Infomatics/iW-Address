@@ -180,7 +180,7 @@ frappe.ui.form.on('Address', {
 before_save: function(frm) {
     if (!frm.doc.custom_automate && !frm._auto_updated) {
         console.log("Before Save: Enabling custom_automate only once");
-        frm.set_value('custom_automate', 1);
+        // frm.set_value('custom_automate', 1);
         frm._auto_updated = true; 
     }
 }

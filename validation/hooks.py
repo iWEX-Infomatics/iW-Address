@@ -33,7 +33,7 @@ override_whitelisted_methods = {
 # ------------------
 
 # include js, css files in header of desk.html
-# app_include_css = "/assets/validation/css/validation.css"
+app_include_css = "/assets/validation/css/custom.css"
 # app_include_js = "/assets/validation/js/address.js"
 
 # include js, css files in header of web template

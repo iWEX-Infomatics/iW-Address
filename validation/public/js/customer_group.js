@@ -19,19 +19,19 @@ frappe.ui.form.on('Customer Group', {
         }
     },
 
-    after_save: function(frm) {
-        if (!frm.doc.custom_automate) {
-            console.log("After Save: Enabling custom_automate");
-            frm.set_value('custom_automate', 1); 
-            frm.save()
-                .then(() => {
-                    console.log("custom_automate has been enabled and saved.");
-                })
-                .catch((error) => {
-                    console.error("Error while saving the form after enabling custom_automate:", error);
-                });
-        }
-    }
+    // after_save: function(frm) {
+    //     if (!frm.doc.custom_automate) {
+    //         console.log("After Save: Enabling custom_automate");
+    //         frm.set_value('custom_automate', 1); 
+    //         frm.save()
+    //             .then(() => {
+    //                 console.log("custom_automate has been enabled and saved.");
+    //             })
+    //             .catch((error) => {
+    //                 console.error("Error while saving the form after enabling custom_automate:", error);
+    //             });
+    //     }
+    // }
 });
 
 

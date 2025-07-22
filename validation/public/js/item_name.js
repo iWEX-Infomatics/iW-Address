@@ -91,32 +91,29 @@ function format_item_name(name) {
 
     const lowercaseWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
 
-    let formattedName = name.replace(/[^a-zA-Z0-9\s\-_]/g, '');
+    let formattedName = name.replace(/[^a-zA-Z0-9\s\-_]/g, ''); // Remove unwanted characters
 
-    formattedName = formattedName.trim().replace(/\s+/g, ' ');
-
-    formattedName = formattedName.replace(/[,\s]+$/, '');
-
-    formattedName = formattedName.replace(/\(/g, ' (');
+    formattedName = formattedName.trim().replace(/\s+/g, ' ');  // Trim and remove extra spaces
+    formattedName = formattedName.replace(/[,\s]+$/, '');       // Remove trailing commas/spaces
+    formattedName = formattedName.replace(/\(/g, ' (');         // Add space before '(' if needed
 
     formattedName = formattedName.split(' ').map((word, index) => {
-        if (word === word.toUpperCase()) {
-            return word;
-        }
-
         const lowerWord = word.toLowerCase();
 
         if (lowercaseWords.includes(lowerWord)) {
             return lowerWord;
-        } else if (word.length >= 4) {
-            return lowerWord.charAt(0).toUpperCase() + lowerWord.slice(1);
         }
 
-        return lowerWord;
+        if (word.length >= 4) {
+            return word.charAt(0).toUpperCase() + word.slice(1);
+        }
+
+        return word;
     }).join(' ');
 
     return formattedName;
 }
+
 
 
 function format_name(name) {
@@ -141,7 +138,8 @@ function format_name(name) {
 
         if (lowercaseWords.includes(lowerWord)) {
             return lowerWord;
-        } else if (word.length >= 4) {
+        } 
+        else if (word.length >= 4) {
             return lowerWord.charAt(0).toUpperCase() + lowerWord.slice(1);
         }
 
