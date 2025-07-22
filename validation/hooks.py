@@ -70,7 +70,6 @@ doctype_js = {
     "Cleanup Settings": "public/js/cleanup_settings.js",
     "Automate Default Values": "validation/validation/doctype/automate_default_values/automate_default_values.js",
     "Party Default Values": "validation/validation/doctype/automate_default_values/automate_default_values.js"
-
 }
 
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
