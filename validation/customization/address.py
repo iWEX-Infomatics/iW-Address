@@ -63,6 +63,8 @@ def validate_address(doc, method):
             doc.tax_category = "Out-State"
         else:
             doc.tax_category = "Overseas"
+    
+    doc.custom_automate = 0
 
 
 

@@ -1,75 +1,51 @@
 frappe.ui.form.on('Bank Account', {
-    onload: function(frm) {
+    onload(frm) {
         if (frm.is_new()) {
-            console.log("Form is new. Initializing custom_automate.");
-            frm.set_value('custom_automate', 1); // Enable custom_automate for new forms
+            frm.set_value('custom_automate', 1);
         }
     },
 
-    account_name: function(frm) {
-        if (frm.doc.custom_automate) {
-            console.log("Item Group Name trigger activated and custom_automate is disabled");
-            check_automation_enabled(frm, function(is_enabled) {
-                console.log("Automation check result:", is_enabled);
-                if (is_enabled) {
-                    const formatted_name = format_name(frm.doc.account_name);
-                    console.log("Formatted Name:", formatted_name);
-                    frm.set_value('account_name', formatted_name);
-                }
-            });
-        } else {
-            console.log("custom_automate is enabled. Skipping Item Group Name trigger.");
-        }
+    account_name(frm) {
+        if (!frm.doc.custom_automate) return;
+
+        check_automation_enabled(frm, function(is_enabled) {
+            if (is_enabled) {
+                frm.set_value('account_name', format_name(frm.doc.account_name));
+            }
+        });
     },
 
-    // after_save: function(frm) {
-    //     if (!frm.doc.custom_automate) {
-    //         console.log("After Save: Enabling custom_automate");
-    //         frm.set_value('custom_automate', 1); // Enable custom_automate after the first save
-
-    //         // Save the form again to persist the change
-    //         frm.save()
-    //             .then(() => {
-    //                 console.log("custom_automate has been enabled and saved.");
-    //             })
-    //             .catch((error) => {
-    //                 console.error("Error while saving the form after enabling custom_automate:", error);
-    //             });
-    //     }
-    // }
+    before_save(frm) {
+        // Always disable automation before save
+        frm.set_value('custom_automate', 0);
+    }
 });
 
 
 function format_name(name) {
     if (!name) return '';
 
-    const lowercaseWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
+    const lowercaseWords = [
+        'a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor',
+        'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'
+    ];
 
-    let formattedName = name.replace(/[^a-zA-Z\s]/g, '');
+    return name
+        .replace(/[^a-zA-Z\s]/g, '')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .replace(/[,\s]+$/, '')
+        .replace(/\(/g, ' (')
+        .split(' ')
+        .map(word => {
+            if (word === word.toUpperCase()) return word;
 
-    formattedName = formattedName.trim().replace(/\s+/g, ' ');
-
-    formattedName = formattedName.replace(/[,\s]+$/, '');
-
-    formattedName = formattedName.replace(/\(/g, ' (');
-
-    formattedName = formattedName.split(' ').map((word, index) => {
-        if (word === word.toUpperCase()) {
-            return word;
-        }
-
-        const lowerWord = word.toLowerCase();
-
-        if (lowercaseWords.includes(lowerWord)) {
-            return lowerWord;
-        } else if (word.length >= 4) {
-            return lowerWord.charAt(0).toUpperCase() + lowerWord.slice(1);
-        }
-
-        return lowerWord;
-    }).join(' ');
-
-    return formattedName;
+            const lower = word.toLowerCase();
+            if (lowercaseWords.includes(lower)) return lower;
+            if (word.length >= 4) return lower.charAt(0).toUpperCase() + lower.slice(1);
+            return lower;
+        })
+        .join(' ');
 }
 
 function check_automation_enabled(frm, callback) {
@@ -79,12 +55,8 @@ function check_automation_enabled(frm, callback) {
             doctype: 'Settings for Automation',
             field: 'enable_bank_automation'
         },
-        callback: function(response) {
-            const is_enabled = response.message ? response.message : false;
-            console.log("Automation enabled?", is_enabled);
-            if (callback) callback(is_enabled);
+        callback(response) {
+            callback(!!response.message);
         }
     });
 }
-
-

@@ -217,7 +217,7 @@ frappe.ui.form.on('Item', {
         frm.refresh_field('item_defaults');
     },
 
-    after_save: function(frm) {
+    before_save: function(frm) {
         // Disable automation after first save to prevent repeated processing
         if (frm.doc.custom_automate === 1) {
             console.log("After Save: Disabling custom_automate to prevent re-processing");

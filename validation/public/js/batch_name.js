@@ -6,7 +6,7 @@ frappe.ui.form.on('Batch', {
         }
     },
 
-    batch_id: function(frm) {
+    before_save: function(frm) {
         if (frm.doc.custom_automate === 1 && frm.doc.batch_id) {
             
            
@@ -18,19 +18,5 @@ frappe.ui.form.on('Batch', {
             frm.set_value('batch_id', corrected_batch_id);
             console.log("batch_id:",corrected_batch_id)
         }
-    },
-    // after_save: function(frm) {
-    //     if (!frm.doc.custom_automate) {
-    //         frm.set_value('custom_automate', 1); // Enable custom_automate after the first save
-
-    //         // Save the form again to persist the change
-    //         frm.save()
-    //             .then(() => {
-    //                 console.log("custom_automate has been enabled and saved.");
-    //             })
-    //             .catch((error) => {
-    //                 console.error("Error while saving the form after enabling custom_automate:", error);
-    //             });
-    //     }
-    // }
+    }
 });

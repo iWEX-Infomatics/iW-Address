@@ -1,86 +1,71 @@
 frappe.ui.form.on('Payment Terms Template', {
-    onload: function(frm) {
+    onload(frm) {
         if (frm.is_new()) {
-            console.log("Form is new. Initializing custom_automate.");
-            frm.set_value('custom_automate', 1); // Enabled custom_automate for new forms
+            console.log("New form - setting custom_automate to 1");
+            frm.set_value('custom_automate', 1);
         }
     },
 
-    template_name: function(frm) {
-        if (frm.doc.custom_automate) {
-            console.log("Item Group Name trigger activated and custom_automate is disabled");
-            check_automation_enabled(frm, function(is_enabled) {
-                console.log("Automation check result:", is_enabled);
-                if (is_enabled) {
-                    const formatted_name = format_name(frm.doc.template_name);
-                    console.log("Formatted Name:", formatted_name);
-                    frm.set_value('template_name', formatted_name);
-                }
-            });
-        } else {
-            console.log("custom_automate is enabled. Skipping Item Group Name trigger.");
+    template_name(frm) {
+        if (!frm.doc.custom_automate) {
+            console.log("custom_automate is disabled - skipping template_name formatting");
+            return;
         }
-    },
-    // after_save: function(frm) {
-    //     if (!frm.doc.custom_automate) {
-    //         console.log("After Save: Enabling custom_automate");
-    //         frm.set_value('custom_automate', 1); // Enable custom_automate after the first save
 
-    //         // Save the form again to persist the change
-    //         frm.save()
-    //             .then(() => {
-    //                 console.log("custom_automate has been enabled and saved.");
-    //             })
-    //             .catch((error) => {
-    //                 console.error("Error while saving the form after enabling custom_automate:", error);
-    //             });
-    //     }
-    // }
+        console.log("template_name changed - checking automation setting");
+
+        checkAutomationEnabled('custom_payment_term_template', (isEnabled) => {
+            if (isEnabled) {
+                const formatted = formatText(frm.doc.template_name);
+                frm.set_value('template_name', formatted);
+                console.log("Formatted template_name:", formatted);
+            }
+        });
+    },
+
+    before_save(frm) {
+        if (frm.doc.custom_automate === 1) {
+            console.log("Before save - disabling custom_automate");
+            frm.set_value('custom_automate', 0);
+            // No need to call frm.save() here — Frappe will save this on its own
+        }
+    }
 });
 
-function format_name(name) {
-    if (!name) return '';
+// Generic text formatting utility
+function formatText(text) {
+    if (!text) return '';
 
     const lowercaseWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
 
-    let formattedName = name.replace(/[^a-zA-Z\s]/g, '');
-
-    formattedName = formattedName.trim().replace(/\s+/g, ' ');
-
-    formattedName = formattedName.replace(/[,\s]+$/, '');
-
-    formattedName = formattedName.replace(/\(/g, ' (');
-
-    formattedName = formattedName.split(' ').map((word, index) => {
-        if (word === word.toUpperCase()) {
-            return word;
-        }
-
-        const lowerWord = word.toLowerCase();
-
-        if (lowercaseWords.includes(lowerWord)) {
-            return lowerWord;
-        } else if (word.length >= 4) {
-            return lowerWord.charAt(0).toUpperCase() + lowerWord.slice(1);
-        }
-
-        return lowerWord;
-    }).join(' ');
-
-    return formattedName;
+    return text
+        .replace(/[^a-zA-Z\s]/g, '')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .replace(/[,\s]+$/, '')
+        .replace(/\(/g, ' (')
+        .split(' ')
+        .map((word, i) => {
+            if (word === word.toUpperCase()) return word;
+            const lower = word.toLowerCase();
+            if (lowercaseWords.includes(lower) && i !== 0) return lower;
+            return lower.charAt(0).toUpperCase() + lower.slice(1);
+        })
+        .join(' ');
 }
 
-function check_automation_enabled(frm, callback) {
+// Reusable automation checker for any field
+function checkAutomationEnabled(settingField, callback) {
     frappe.call({
         method: 'frappe.client.get_single_value',
         args: {
             doctype: 'Settings for Automation',
-            field: 'custom_payment_term_template'
+            field: settingField
         },
-        callback: function(response) {
-            const is_enabled = response.message ? response.message : false;
-            console.log("Automation enabled?", is_enabled);
-            if (callback) callback(is_enabled);
+        callback: (res) => {
+            const isEnabled = !!res.message;
+            console.log(`Automation (${settingField}) enabled?`, isEnabled);
+            if (callback) callback(isEnabled);
         }
     });
 }
