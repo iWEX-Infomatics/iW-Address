@@ -135,33 +135,15 @@ function setupTaxRows(frm, percentage) {
         'Reverse Charge Out-State'
     ];
 
-    // Get company from item_defaults or fallback
-    const itemDefaults = frm.doc.item_defaults || [];
-    const company = itemDefaults.length > 0 ? itemDefaults[0].company : null;
-
-    if (!company) {
-        frappe.msgprint(__('Company not found in Item Defaults. Cannot set tax templates.'));
-        return;
-    }
-
-    // Fetch company abbreviation
-    frappe.db.get_value('Company', company, 'abbr', (r) => {
-        if (!r || !r.abbr) {
-            frappe.msgprint(__('Could not fetch abbreviation for company: {0}', [company]));
-            return;
-        }
-
-        const companyAbbr = r.abbr;
-
-        taxCategories.forEach(category => {
-            const child = frm.add_child("taxes");
-            child.item_tax_template = `GST ${percentage} - ${companyAbbr}`;
-            child.tax_category = category;
-        });
-
-        frm.refresh_field("taxes");
+    taxCategories.forEach(category => {
+        const child = frm.add_child("taxes");
+        child.item_tax_template = `GST ${percentage} - AT`;
+        child.tax_category = category;
     });
+
+    frm.refresh_field("taxes");
 }
+
 // Main form handler
 frappe.ui.form.on('Item', {
     onload: function(frm) {
@@ -182,6 +164,8 @@ frappe.ui.form.on('Item', {
     item_group: function(frm) {
         if (frm.doc.item_group === "Services") {
             frm.set_value("is_stock_item", 0);  // Uncheck Maintain Stock
+        } else {
+            frm.set_value("is_stock_item", 1);  // Check Maintain Stock for other groups
         }
     },
     description: function(frm) {
