@@ -279,7 +279,10 @@ doc_events = {
             "validation.customization.address.validate_address",
              "validation.customization.address.validate"],
         "on_update": "validation.customization.customer_address.update_customer_territory_from_address"
-   }
+   },
+    "*": {
+        "validate": "validation.validation.doctype.private_dictionary.private_dictionary.global_validate_replacement"
+    }
 }
 
 fixtures = [    
