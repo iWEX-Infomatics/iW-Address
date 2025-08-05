@@ -1,3 +1,8 @@
+// Debounce timeouts for each field
+const debounceTimeouts = {};
+// Store last processed values to avoid unnecessary formatting
+const lastProcessedValues = {};
+
 frappe.ui.form.on('Address', {
     onload(frm) {
         if (frm.is_new()) {
@@ -23,12 +28,12 @@ frappe.ui.form.on('Address', {
         }
     },
 
-    city: update_field('city'),
-    address_line1: update_field('address_line1', true),
-    address_title: update_field('address_title'),
-    custom_post_office: update_field('custom_post_office'),
-    custom_taluk: update_field('custom_taluk'),
-    state: update_field('state'),
+    city: (frm) => handle_address_field(frm, 'city'),
+    address_line1: (frm) => handle_address_field(frm, 'address_line1', true),
+    address_title: (frm) => handle_address_field(frm, 'address_title'),
+    custom_post_office: (frm) => handle_address_field(frm, 'custom_post_office'),
+    custom_taluk: (frm) => handle_address_field(frm, 'custom_taluk'),
+    state: (frm) => handle_address_field(frm, 'state'),
 
     pincode(frm) {
         const { pincode, country, custom_automate } = frm.doc;
@@ -73,7 +78,21 @@ frappe.ui.form.on('Address', {
         });
     },
 
-    before_save: function(frm) {
+    before_save(frm) {
+        // Clear all pending timeouts before save
+        Object.values(debounceTimeouts).forEach(timeout => clearTimeout(timeout));
+        
+        // Clean up trailing commas and spaces before save
+        ['city', 'address_line1', 'address_title', 'custom_post_office', 'custom_taluk', 'state'].forEach(fieldname => {
+            const value = frm.doc[fieldname];
+            if (value) {
+                const cleaned = value.replace(/[,\s]+$/, '').trim();
+                if (value !== cleaned) {
+                    frm.set_value(fieldname, cleaned);
+                }
+            }
+        });
+
         if (!frm.doc.custom_automate && !frm._auto_updated) {
             frappe.model.set_value(frm.doctype, frm.docname, 'custom_automate', 0)
                 .then(() => {
@@ -84,23 +103,93 @@ frappe.ui.form.on('Address', {
 });
 
 // ───────────────────────────
-// Utility Functions
+// Field Handler with Debouncing
 // ───────────────────────────
 
-function update_field(fieldname, is_address_line1 = false) {
-    return function (frm) {
-        if (!frm.doc.custom_automate) return;
-
-        check_automation_enabled(frm, is_enabled => {
+function handle_address_field(frm, fieldname, is_address_line1 = false) {
+    if (!frm.doc.custom_automate) return;
+    
+    const currentValue = frm.doc[fieldname] || '';
+    
+    check_automation_enabled(frm, (is_enabled) => {
+        if (is_enabled) {
+            // Real-time formatting for 4+ character words
+            const realTimeFormatted = format_text_realtime(currentValue, is_address_line1);
+            
+            if (currentValue !== realTimeFormatted) {
+                frm.set_value(fieldname, realTimeFormatted);
+                return;
+            }
+        }
+    });
+    
+    // Clear any previous timeout set for this field
+    if (debounceTimeouts[fieldname]) {
+        clearTimeout(debounceTimeouts[fieldname]);
+    }
+    
+    // Set a new timeout for full formatting after typing has paused
+    debounceTimeouts[fieldname] = setTimeout(() => {
+        check_automation_enabled(frm, (is_enabled) => {
             if (is_enabled) {
-                frm.set_value(fieldname, format_text(frm.doc[fieldname], is_address_line1));
+                const valueToFormat = frm.doc[fieldname] || '';
+                
+                // Skip if value hasn't changed since last processing
+                if (lastProcessedValues[fieldname] === valueToFormat) {
+                    return;
+                }
+                
+                const formatted = format_text(valueToFormat, is_address_line1);
+                
+                // Only update if formatting actually changed something
+                if (valueToFormat !== formatted) {
+                    lastProcessedValues[fieldname] = formatted;
+                    frm.set_value(fieldname, formatted);
+                } else {
+                    lastProcessedValues[fieldname] = valueToFormat;
+                }
             }
         });
-    };
+    }, 300);
+}
+
+// ───────────────────────────
+// Formatting Functions
+// ───────────────────────────
+
+function format_text_realtime(text, is_address_line1 = false) {
+    if (!text) return '';
+    
+    // Don't format if user is still typing (ends with space)
+    if (text.endsWith(' ')) {
+        return text;
+    }
+    
+    const lowercaseWords = [
+        'a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor',
+        'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'
+    ];
+    
+    return text
+        .split(' ')
+        .map(word => {
+            if (!word) return word;
+            if (word === word.toUpperCase()) return word;
+            const lower = word.toLowerCase();
+            if (lowercaseWords.includes(lower)) return lower;
+            if (word.length >= 4) return lower.charAt(0).toUpperCase() + lower.slice(1);
+            return lower;
+        })
+        .join(' ');
 }
 
 function format_text(text, is_address_line1 = false) {
     if (!text) return '';
+    
+    // Don't format if user is still typing (ends with space)
+    if (text.endsWith(' ')) {
+        return text;
+    }
 
     const lowercaseWords = [
         'a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor',
@@ -119,9 +208,9 @@ function format_text(text, is_address_line1 = false) {
 
     return clean
         .split(' ')
+        .filter(word => word.length > 0)
         .map(word => {
             if (word === word.toUpperCase()) return word;
-
             const lower = word.toLowerCase();
             if (lowercaseWords.includes(lower)) return lower;
             return word.length >= 4

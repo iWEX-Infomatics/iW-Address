@@ -1,13 +1,131 @@
+// Global debounce handler - reusable across all forms
+const FormHandler = {
+    timeouts: {},
+    lastValues: {},
+    
+    handle(frm, fieldname, automationField, formatFunction, realTimeFunction) {
+        if (!frm.doc.custom_automate) return;
+        
+        const currentValue = frm.doc[fieldname] || '';
+        
+        // Real-time formatting check
+        this.checkAutomation(automationField, (enabled) => {
+            if (enabled) {
+                const formatted = realTimeFunction(currentValue);
+                if (currentValue !== formatted) {
+                    frm.set_value(fieldname, formatted);
+                    return;
+                }
+            }
+        });
+        
+        // Debounced full formatting
+        clearTimeout(this.timeouts[fieldname]);
+        this.timeouts[fieldname] = setTimeout(() => {
+            this.checkAutomation(automationField, (enabled) => {
+                if (enabled) {
+                    const valueToFormat = frm.doc[fieldname] || '';
+                    if (this.lastValues[fieldname] === valueToFormat) return;
+                    
+                    const formatted = formatFunction(valueToFormat);
+                    if (valueToFormat !== formatted) {
+                        this.lastValues[fieldname] = formatted;
+                        frm.set_value(fieldname, formatted);
+                    } else {
+                        this.lastValues[fieldname] = valueToFormat;
+                    }
+                }
+            });
+        }, 300);
+    },
+    
+    cleanup(frm, fields) {
+        Object.values(this.timeouts).forEach(clearTimeout);
+        this.timeouts = {};
+        
+        fields.forEach(fieldname => {
+            const value = frm.doc[fieldname];
+            if (value) {
+                const cleaned = value.replace(/[,\s]+$/, '').trim();
+                if (value !== cleaned) frm.set_value(fieldname, cleaned);
+            }
+        });
+    },
+    
+    checkAutomation(field, callback) {
+        frappe.call({
+            method: 'frappe.client.get_single_value',
+            args: {
+                doctype: 'Settings for Automation',
+                field: field
+            },
+            callback: (res) => callback(!!res.message)
+        });
+    }
+};
+
+// Text formatting utilities
+const TextFormatter = {
+    lowercaseWords: ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'],
+    
+    realTime(text, allowNumbers = false) {
+        if (!text || text.endsWith(' ')) return text;
+        
+        return text.split(' ').map(word => {
+            if (!word || word === word.toUpperCase()) return word;
+            const lower = word.toLowerCase();
+            return this.lowercaseWords.includes(lower) ? lower : 
+                   word.length >= 4 ? lower.charAt(0).toUpperCase() + lower.slice(1) : lower;
+        }).join(' ');
+    },
+    
+    full(text, allowNumbers = false) {
+        if (!text || text.endsWith(' ')) return text;
+        
+        const regex = allowNumbers ? /[^a-zA-Z0-9\s]/g : /[^a-zA-Z\s]/g;
+        
+        return text
+            .replace(regex, '')
+            .trim()
+            .replace(/\s+/g, ' ')
+            .replace(/[,\s]+$/, '')
+            .replace(/\(/g, ' (')
+            .split(' ')
+            .filter(word => word.length > 0)
+            .map(word => {
+                if (word === word.toUpperCase()) return word;
+                const lower = word.toLowerCase();
+                return this.lowercaseWords.includes(lower) ? lower :
+                       word.length >= 4 ? lower.charAt(0).toUpperCase() + lower.slice(1) : lower;
+            })
+            .join(' ');
+    }
+};
+
+// Email formatting utilities
+const EmailFormatter = {
+    realTime(email) {
+        if (!email) return email;
+        return email.toLowerCase();
+    },
+    
+    full(email) {
+        if (!email) return '';
+        return email
+            .toLowerCase()
+            .replace(/[^a-z0-9@._\-]/g, '')
+            .replace(/\s+/g, '')
+            .replace(/@{2,}/g, '@')
+            .trim();
+    }
+};
+
 frappe.ui.form.on('Employee', {
     onload: function(frm) {
         if (frm.is_new()) {
             console.log("Form is new. Initializing custom_automate.");
             frm.set_value('custom_automate', 1);
         }
-
-        check_automation_enabled(frm, function(is_enabled) {
-            console.log("Automation enabled:", is_enabled);
-        });
     },
 
     custom_current_address: function(frm) {
@@ -29,38 +147,116 @@ frappe.ui.form.on('Employee', {
         }
     },
 
+    // Using debounced FormHandler for name fields
     first_name: function(frm) {
-        auto_format_field(frm, 'first_name', update_employee_name);
+        FormHandler.handle(
+            frm, 
+            'first_name', 
+            'enable_employee_automation', 
+            (text) => TextFormatter.full(text, false),
+            (text) => TextFormatter.realTime(text, false)
+        );
+        // Update employee name after formatting
+        setTimeout(() => update_employee_name(frm), 350);
     },
 
     middle_name: function(frm) {
-        auto_format_field(frm, 'middle_name', update_employee_name);
+        FormHandler.handle(
+            frm, 
+            'middle_name', 
+            'enable_employee_automation', 
+            (text) => TextFormatter.full(text, false),
+            (text) => TextFormatter.realTime(text, false)
+        );
+        // Update employee name after formatting
+        setTimeout(() => update_employee_name(frm), 350);
     },
 
     last_name: function(frm) {
-        auto_format_field(frm, 'last_name', update_employee_name);
+        FormHandler.handle(
+            frm, 
+            'last_name', 
+            'enable_employee_automation', 
+            (text) => TextFormatter.full(text, false),
+            (text) => TextFormatter.realTime(text, false)
+        );
+        // Update employee name after formatting
+        setTimeout(() => update_employee_name(frm), 350);
     },
 
+    // Using debounced FormHandler for other text fields
     family_background: function(frm) {
-        auto_format_field(frm, 'family_background');
+        FormHandler.handle(
+            frm, 
+            'family_background', 
+            'enable_employee_automation', 
+            (text) => TextFormatter.full(text, false),
+            (text) => TextFormatter.realTime(text, false)
+        );
     },
 
     health_details: function(frm) {
-        auto_format_field(frm, 'health_details');
+        FormHandler.handle(
+            frm, 
+            'health_details', 
+            'enable_employee_automation', 
+            (text) => TextFormatter.full(text, false),
+            (text) => TextFormatter.realTime(text, false)
+        );
     },
 
     person_to_be_contacted: function(frm) {
-        auto_format_field(frm, 'person_to_be_contacted');
+        FormHandler.handle(
+            frm, 
+            'person_to_be_contacted', 
+            'enable_employee_automation', 
+            (text) => TextFormatter.full(text, false),
+            (text) => TextFormatter.realTime(text, false)
+        );
     },
 
     relation: function(frm) {
-        auto_format_field(frm, 'relation');
+        FormHandler.handle(
+            frm, 
+            'relation', 
+            'enable_employee_automation', 
+            (text) => TextFormatter.full(text, false),
+            (text) => TextFormatter.realTime(text, false)
+        );
     },
 
     bio: function(frm) {
-        auto_format_field(frm, 'bio');
+        FormHandler.handle(
+            frm, 
+            'bio', 
+            'enable_employee_automation', 
+            (text) => TextFormatter.full(text, false),
+            (text) => TextFormatter.realTime(text, false)
+        );
     },
 
+    // Using debounced FormHandler for email fields
+    personal_email: function(frm) {
+        FormHandler.handle(
+            frm, 
+            'personal_email', 
+            'enable_employee_automation', 
+            (email) => EmailFormatter.full(email),
+            (email) => EmailFormatter.realTime(email)
+        );
+    },
+
+    company_email: function(frm) {
+        FormHandler.handle(
+            frm, 
+            'company_email', 
+            'enable_employee_automation', 
+            (email) => EmailFormatter.full(email),
+            (email) => EmailFormatter.realTime(email)
+        );
+    },
+
+    // Employee number formatting (immediate, no debounce needed)
     employee_number: function(frm) {
         if (frm.doc.custom_automate === 1) {
             let corrected = frm.doc.employee_number
@@ -71,22 +267,22 @@ frappe.ui.form.on('Employee', {
         }
     },
 
-    personal_email: function(frm) {
-        auto_format_email(frm, 'personal_email');
-    },
-
-    company_email: function(frm) {
-        auto_format_email(frm, 'company_email');
-    },
-
     before_save: function(frm) {
+        // Clean up any trailing spaces/commas before saving
+        FormHandler.cleanup(frm, [
+            'first_name', 'middle_name', 'last_name', 
+            'family_background', 'health_details', 
+            'person_to_be_contacted', 'relation', 'bio'
+        ]);
+        
         if (frm.doc.custom_automate) {
-            console.log("Before Save: Enabling custom_automate");
+            console.log("Before Save: Disabling custom_automate");
             frm.set_value('custom_automate', 0);
         }
     }
 });
 
+// Helper functions
 function update_address_display(frm, source_field, target_display_field) {
     const address_name = frm.doc[source_field];
     if (!address_name) {
@@ -113,6 +309,15 @@ function update_address_display(frm, source_field, target_display_field) {
             frm.set_value(target_display_field, '');
         });
 }
+
+function update_employee_name(frm) {
+    let full_name = [frm.doc.first_name, frm.doc.middle_name, frm.doc.last_name]
+        .filter(Boolean)
+        .join(' ');
+    frm.set_value('employee_name', full_name);
+}
+
+// ========== Legacy Functions (kept for compatibility) ==========
 
 function auto_format_field(frm, fieldname, callback) {
     if (frm.doc.custom_automate) {
@@ -166,13 +371,6 @@ function format_name(name) {
             return lower;
         })
         .join(' ');
-}
-
-function update_employee_name(frm) {
-    let full_name = [frm.doc.first_name, frm.doc.middle_name, frm.doc.last_name]
-        .filter(Boolean)
-        .join(' ');
-    frm.set_value('employee_name', full_name);
 }
 
 function check_automation_enabled(frm, callback) {

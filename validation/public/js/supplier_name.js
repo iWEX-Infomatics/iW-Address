@@ -1,3 +1,107 @@
+// Global debounce handler - reusable across all forms
+const FormHandler = {
+    timeouts: {},
+    lastValues: {},
+    
+    handle(frm, fieldname, automationField, formatFunction, realTimeFunction) {
+        if (!frm.doc.custom_automate) return;
+        
+        const currentValue = frm.doc[fieldname] || '';
+        
+        // Real-time formatting check
+        this.checkAutomation(automationField, (enabled) => {
+            if (enabled) {
+                const formatted = realTimeFunction(currentValue);
+                if (currentValue !== formatted) {
+                    frm.set_value(fieldname, formatted);
+                    return;
+                }
+            }
+        });
+        
+        // Debounced full formatting
+        clearTimeout(this.timeouts[fieldname]);
+        this.timeouts[fieldname] = setTimeout(() => {
+            this.checkAutomation(automationField, (enabled) => {
+                if (enabled) {
+                    const valueToFormat = frm.doc[fieldname] || '';
+                    if (this.lastValues[fieldname] === valueToFormat) return;
+                    
+                    const formatted = formatFunction(valueToFormat);
+                    if (valueToFormat !== formatted) {
+                        this.lastValues[fieldname] = formatted;
+                        frm.set_value(fieldname, formatted);
+                    } else {
+                        this.lastValues[fieldname] = valueToFormat;
+                    }
+                }
+            });
+        }, 300);
+    },
+    
+    cleanup(frm, fields) {
+        Object.values(this.timeouts).forEach(clearTimeout);
+        this.timeouts = {};
+        
+        fields.forEach(fieldname => {
+            const value = frm.doc[fieldname];
+            if (value) {
+                const cleaned = value.replace(/[,\s]+$/, '').trim();
+                if (value !== cleaned) frm.set_value(fieldname, cleaned);
+            }
+        });
+    },
+    
+    checkAutomation(field, callback) {
+        frappe.call({
+            method: 'frappe.client.get_single_value',
+            args: {
+                doctype: 'Settings for Automation',
+                field: field
+            },
+            callback: (res) => callback(!!res.message)
+        });
+    }
+};
+
+// Text formatting utilities
+const TextFormatter = {
+    lowercaseWords: ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'],
+    
+    realTime(text, allowNumbers = false) {
+        if (!text || text.endsWith(' ')) return text;
+        
+        return text.split(' ').map((word, index) => {
+            if (!word || word === word.toUpperCase()) return word;
+            const lower = word.toLowerCase();
+            if (this.lowercaseWords.includes(lower) && index !== 0) return lower;
+            return word.length >= 4 ? lower.charAt(0).toUpperCase() + lower.slice(1) : lower;
+        }).join(' ');
+    },
+    
+    full(text, allowNumbers = false) {
+        if (!text || text.endsWith(' ')) return text;
+        
+        const regex = allowNumbers ? /[^a-zA-Z0-9\s]/g : /[^a-zA-Z\s]/g;
+        
+        return text
+            .replace(regex, '')
+            .trim()
+            .replace(/\s+/g, ' ')
+            .replace(/[,\s]+$/, '')
+            .replace(/\(/g, ' (')
+            .split(' ')
+            .filter(word => word.length > 0)
+            .map((word, index) => {
+                if (word === word.toUpperCase()) return word;
+                const lower = word.toLowerCase();
+                if (this.lowercaseWords.includes(lower) && index !== 0) return lower;
+                return word.length >= 4 ? lower.charAt(0).toUpperCase() + lower.slice(1) : lower;
+            })
+            .join(' ');
+    }
+};
+
 frappe.ui.form.on('Supplier', {
     onload: function(frm) {
         if (frm.is_new()) {
@@ -33,17 +137,34 @@ frappe.ui.form.on('Supplier', {
         }
     },
 
+    // Using debounced FormHandler for supplier_name
     supplier_name: function(frm) {
-        handle_format_field(frm, 'supplier_name');
+        FormHandler.handle(
+            frm, 
+            'supplier_name', 
+            'enable_supplier_automation', 
+            (text) => TextFormatter.full(text, false), // allowNumbers = false
+            (text) => TextFormatter.realTime(text, false)
+        );
     },
 
+    // Using debounced FormHandler for supplier_details
     supplier_details: function(frm) {
-        handle_format_field(frm, 'supplier_details');
+        FormHandler.handle(
+            frm, 
+            'supplier_details', 
+            'enable_supplier_automation', 
+            (text) => TextFormatter.full(text, false), // allowNumbers = false
+            (text) => TextFormatter.realTime(text, false)
+        );
     },
 
     before_save: function(frm) {
+        // Clean up any trailing spaces/commas before saving
+        FormHandler.cleanup(frm, ['supplier_name', 'supplier_details']);
+        
         if (frm.doc.custom_automate) {
-            console.log("Before Save: Enabling custom_automate");
+            console.log("Before Save: Disabling custom_automate");
             frm.set_value('custom_automate', 0);
         }
     }
@@ -51,23 +172,9 @@ frappe.ui.form.on('Supplier', {
 
 // --------------------- Utility Functions ----------------------
 
-function handle_format_field(frm, fieldname) {
-    if (frm.doc.custom_automate) {
-        check_automation_enabled(frm, function(is_enabled) {
-            if (is_enabled) {
-                const formatted_value = format_name(frm.doc[fieldname]);
-                console.log(`Formatted ${fieldname}:`, formatted_value);
-                frm.set_value(fieldname, formatted_value);
-            }
-        });
-    } else {
-        console.log(`custom_automate is enabled. Skipping ${fieldname} trigger.`);
-    }
-}
-
 function set_indian_defaults(frm, account_type) {
     frm.set_value("default_currency", "INR");
-    frm.set_value("default_price_list", "Standard Buying");
+    frm.set_value("default_price_list", "INR Buying");
 
     frappe.call({
         method: "frappe.client.get_value",
@@ -157,6 +264,22 @@ function get_account_name(company, account_type, callback) {
     });
 }
 
+// ========== Legacy Functions (kept for compatibility) ==========
+
+function handle_format_field(frm, fieldname) {
+    if (frm.doc.custom_automate) {
+        check_automation_enabled(frm, function(is_enabled) {
+            if (is_enabled) {
+                const formatted_value = format_name(frm.doc[fieldname]);
+                console.log(`Formatted ${fieldname}:`, formatted_value);
+                frm.set_value(fieldname, formatted_value);
+            }
+        });
+    } else {
+        console.log(`custom_automate is disabled. Skipping ${fieldname} trigger.`);
+    }
+}
+
 function check_automation_enabled(frm, callback) {
     frappe.call({
         method: 'frappe.client.get_single_value',
@@ -182,7 +305,7 @@ function format_name(name) {
     formattedName = formattedName.split(' ').map((word, index) => {
         if (word === word.toUpperCase()) return word;
         const lower = word.toLowerCase();
-        if (lowercaseWords.includes(lower)) return lower;
+        if (lowercaseWords.includes(lower) && index !== 0) return lower;
         return lower.length >= 4 ? lower.charAt(0).toUpperCase() + lower.slice(1) : lower;
     }).join(' ');
 
