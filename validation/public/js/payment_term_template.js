@@ -125,12 +125,18 @@ frappe.ui.form.on('Payment Terms Template', {
         }
         // Initialize original values store
         frm._original_values = {};
+        // Initialize popup shown tracker
+        frm._popup_shown_fields = {};
     },
 
     refresh(frm) {
         // Store original values for text fields to detect manual changes later
         frm._original_values['template_name'] = frm.doc.template_name;
+
+        // Reset popup shown tracker on refresh so popup can appear again on fresh edits
+        frm._popup_shown_fields = {};
     },
+
 
     // Using debounced FormHandler for template_name
     template_name(frm) {
@@ -158,6 +164,10 @@ frappe.ui.form.on('Payment Terms Template', {
 // Check for manual corrections and ask user to add to Private Dictionary
 function checkForManualCorrection(frm, fieldname) {
     if (!frm._original_values) return;
+    if (!frm._popup_shown_fields) frm._popup_shown_fields = {};
+
+    // Agar is field ke liye popup pehle hi dikh chuka hai to return
+    if (frm._popup_shown_fields[fieldname]) return;
 
     const oldVal = frm._original_values[fieldname] || '';
     const newVal = frm.doc[fieldname] || '';
@@ -171,7 +181,9 @@ function checkForManualCorrection(frm, fieldname) {
                 const original = oldWords[i];
                 const corrected = newWords[i];
 
-                // Show frappe.confirm once per first detected correction
+                // Mark popup as shown for this field
+                frm._popup_shown_fields[fieldname] = true;
+
                 frappe.confirm(
                     `You corrected "<b>${original}</b>" to "<b>${corrected}</b>".<br><br>Do you want to add it to your Private Dictionary?`,
                     () => {
@@ -192,8 +204,9 @@ function checkForManualCorrection(frm, fieldname) {
                     }
                 );
 
-                break; // Only show one correction at a time
+                break; // Only one popup at a time
             }
         }
     }
 }
+

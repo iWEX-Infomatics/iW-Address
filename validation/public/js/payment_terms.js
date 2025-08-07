@@ -112,15 +112,18 @@ frappe.ui.form.on('Payment Term', {
             console.log("New form - setting custom_automate to 1");
             frm.set_value('custom_automate', 1);
         }
-        // Initialize original values store
         frm._original_values = {};
+        frm._popup_shown_fields = {};  // <-- Add this line to track shown popups
     },
 
     refresh(frm) {
-        // Save original values for manual correction detection
         frm._original_values['payment_term_name'] = frm.doc.payment_term_name;
         frm._original_values['description'] = frm.doc.description;
+
+        // Reset popup tracking on refresh (optional)
+        frm._popup_shown_fields = {};
     },
+
 
     // Using debounced FormHandler for payment_term_name
     payment_term_name(frm) {
@@ -155,9 +158,12 @@ frappe.ui.form.on('Payment Term', {
     }
 });
 
-// Manual correction detection and popup for Private Dictionary
 function checkForManualCorrection(frm, fieldname) {
     if (!frm._original_values) return;
+    if (!frm._popup_shown_fields) frm._popup_shown_fields = {};
+
+    // Agar is field ke liye popup pehle hi dikh chuka hai to return kar do
+    if (frm._popup_shown_fields[fieldname]) return;
 
     const oldVal = frm._original_values[fieldname] || '';
     const newVal = frm.doc[fieldname] || '';
@@ -171,6 +177,9 @@ function checkForManualCorrection(frm, fieldname) {
                 const original = oldWords[i];
                 const corrected = newWords[i];
 
+                // Mark popup as shown for this field so it won't repeat
+                frm._popup_shown_fields[fieldname] = true;
+
                 frappe.confirm(
                     `You corrected "<b>${original}</b>" to "<b>${corrected}</b>".<br><br>Do you want to add it to your Private Dictionary?`,
                     () => {
@@ -179,13 +188,13 @@ function checkForManualCorrection(frm, fieldname) {
                             args: { original, corrected },
                             callback: () => {
                                 frappe.show_alert("Word added to Private Dictionary!");
-                                frm._original_values[fieldname] = newVal; // update to avoid repeat popup
+                                frm._original_values[fieldname] = newVal; // update original to avoid repeat popup
                             }
                         });
                     },
                     () => {
                         frappe.show_alert("Skipped adding to dictionary.");
-                        frm._original_values[fieldname] = newVal; // update to avoid repeat popup
+                        frm._original_values[fieldname] = newVal; // update original anyway
                     }
                 );
 
@@ -194,6 +203,7 @@ function checkForManualCorrection(frm, fieldname) {
         }
     }
 }
+
 
 // Legacy helper functions (for compatibility)
 

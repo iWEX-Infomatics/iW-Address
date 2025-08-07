@@ -112,6 +112,7 @@ frappe.ui.form.on('Terms and Conditions', {
             frm.set_value('custom_automate', 1);
         }
         frm._original_values = {};
+        frm._popup_shown_fields = {};  // Track popup shown per field
     },
 
     refresh(frm) {
@@ -153,6 +154,10 @@ frappe.ui.form.on('Terms and Conditions', {
 // Manual correction detection and popup for Private Dictionary
 function checkForManualCorrection(frm, fieldname) {
     if (!frm._original_values) return;
+    if (!frm._popup_shown_fields) frm._popup_shown_fields = {};
+
+    // If popup already shown once for this field, skip
+    if (frm._popup_shown_fields[fieldname]) return;
 
     const oldVal = frm._original_values[fieldname] || '';
     const newVal = frm.doc[fieldname] || '';
@@ -165,6 +170,9 @@ function checkForManualCorrection(frm, fieldname) {
             if (newWords[i] && oldWords[i] !== newWords[i]) {
                 const original = oldWords[i];
                 const corrected = newWords[i];
+
+                // Mark popup as shown for this field
+                frm._popup_shown_fields[fieldname] = true;
 
                 frappe.confirm(
                     `You corrected "<b>${original}</b>" to "<b>${corrected}</b>".<br><br>Do you want to add it to your Private Dictionary?`,
@@ -188,64 +196,4 @@ function checkForManualCorrection(frm, fieldname) {
             }
         }
     }
-}
-
-// ========== Legacy Functions (kept for compatibility) ==========
-
-function handle_automation_for_field(frm, fieldname) {
-    if (frm.doc.custom_automate) {
-        console.log(`${fieldname} trigger activated and custom_automate is disabled`);
-        check_automation_enabled(frm, function(is_enabled) {
-            console.log("Automation check result:", is_enabled);
-            if (is_enabled) {
-                const formatted_value = format_name(frm.doc[fieldname]);
-                console.log(`Formatted ${fieldname}:`, formatted_value);
-                frm.set_value(fieldname, formatted_value);
-            }
-        });
-    } else {
-        console.log(`custom_automate is enabled. Skipping ${fieldname} trigger.`);
-    }
-}
-
-function format_name(name) {
-    if (!name) return '';
-
-    const lowercaseWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
-
-    let formattedName = name.replace(/[^a-zA-Z\s]/g, '');
-    formattedName = formattedName.trim().replace(/\s+/g, ' ');
-    formattedName = formattedName.replace(/[,\s]+$/, '');
-    formattedName = formattedName.replace(/\(/g, ' (');
-
-    formattedName = formattedName.split(' ').map((word, index) => {
-        if (word === word.toUpperCase()) {
-            return word;
-        }
-
-        const lowerWord = word.toLowerCase();
-
-        if (lowercaseWords.includes(lowerWord) && index !== 0) {
-            return lowerWord;
-        }
-
-        return lowerWord.charAt(0).toUpperCase() + lowerWord.slice(1);
-    }).join(' ');
-
-    return formattedName;
-}
-
-function check_automation_enabled(frm, callback) {
-    frappe.call({
-        method: 'frappe.client.get_single_value',
-        args: {
-            doctype: 'Settings for Automation',
-            field: 'custom_terms_and_conditions'
-        },
-        callback: function(response) {
-            const is_enabled = response.message ? response.message : false;
-            console.log("Automation enabled?", is_enabled);
-            if (callback) callback(is_enabled);
-        }
-    });
 }

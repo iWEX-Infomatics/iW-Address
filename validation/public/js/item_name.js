@@ -232,6 +232,9 @@ frappe.ui.form.on('Item', {
         ['item_code', 'item_name', 'description'].forEach(field => {
             original_values[field] = frm.doc[field] || '';
         });
+
+        // Initialize popup shown flags
+        frm._popup_shown_fields = {};
     },
 
     refresh(frm) {
@@ -239,6 +242,9 @@ frappe.ui.form.on('Item', {
         ['item_code', 'item_name', 'description'].forEach(field => {
             original_values[field] = frm.doc[field] || '';
         });
+
+        // Reset popup flags on refresh so user can get popup again on fresh edits
+        frm._popup_shown_fields = {};
     },
 
     item_code(frm) {
@@ -331,6 +337,12 @@ frappe.ui.form.on('Item', {
 
 // Manual correction detection and popup for adding to Private Dictionary
 function checkForManualCorrection(frm, fieldname) {
+    if (!frm._popup_shown_fields) {
+        frm._popup_shown_fields = {};
+    }
+    // Agar is field ka popup pehle hi dikha chuka hai to return karo
+    if (frm._popup_shown_fields[fieldname]) return;
+
     const oldVal = original_values[fieldname] || '';
     const newVal = frm.doc[fieldname] || '';
 
@@ -342,6 +354,9 @@ function checkForManualCorrection(frm, fieldname) {
             if (oldWords[i] !== newWords[i]) {
                 const originalWord = oldWords[i];
                 const correctedWord = newWords[i];
+
+                // Mark popup shown for this field now
+                frm._popup_shown_fields[fieldname] = true;
 
                 frappe.confirm(
                     `You changed "<b>${originalWord}</b>" to "<b>${correctedWord}</b>" in <b>${fieldname.replace('_',' ')}</b>.<br><br>Do you want to add this to your Private Dictionary?`,
@@ -367,6 +382,7 @@ function checkForManualCorrection(frm, fieldname) {
         }
     }
 }
+
 
 // Tax helper functions
 function clearNonEmptyTaxRows(frm) {

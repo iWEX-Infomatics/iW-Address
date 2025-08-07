@@ -110,7 +110,7 @@ frappe.ui.form.on('Customer', {
             frm.set_value('custom_automate', 1);
         }
 
-        // Initialize original values only once
+        // Save original field values
         if (!frm._original_values) {
             frm._original_values = {};
             frm.meta.fields.forEach(field => {
@@ -119,20 +119,31 @@ frappe.ui.form.on('Customer', {
                 }
             });
         }
+
+        // Track shown popups
+        frm._popup_shown_fields = {};
     },
 
     refresh(frm) {
-        console.log("******************trrrrrrrr** Global Autocorrect Loaded ********************");
-        // NOTE: Don't reset _original_values here; keep for validation comparison
+        console.log("****************** Global Autocorrect Loaded ********************");
     },
 
     validate(frm) {
-        // Autocorrect change detection & prompt
+        if (!frm._popup_shown_fields) {
+            frm._popup_shown_fields = {};
+        }
+
         let changes = [];
+
         frm.meta.fields.forEach(field => {
+            const fieldname = field.fieldname;
+
             if (["Data", "Small Text", "Text", "Long Text", "Text Editor"].includes(field.fieldtype)) {
-                const old_val = frm._original_values[field.fieldname];
-                const new_val = frm.doc[field.fieldname];
+                const old_val = frm._original_values[fieldname];
+                const new_val = frm.doc[fieldname];
+
+                // Agar is field ka popup pehle hi dikha chuka hai to skip kar do
+                if (frm._popup_shown_fields[fieldname]) return;
 
                 if (old_val && new_val && old_val !== new_val) {
                     const old_words = old_val.split(/\s+/);
@@ -141,6 +152,7 @@ frappe.ui.form.on('Customer', {
                     old_words.forEach((word, idx) => {
                         if (new_words[idx] && word !== new_words[idx]) {
                             changes.push({
+                                fieldname,
                                 original: word,
                                 corrected: new_words[idx]
                             });
@@ -151,7 +163,12 @@ frappe.ui.form.on('Customer', {
         });
 
         if (changes.length > 0) {
-            const change = changes[0]; // only first correction for now
+            const change = changes[0];
+            const fieldname = change.fieldname;
+
+            // Mark popup as shown for this field
+            frm._popup_shown_fields[fieldname] = true;
+
             frappe.confirm(
                 `You corrected "<b>${change.original}</b>" to "<b>${change.corrected}</b>".<br><br>Do you want to add it to your Private Dictionary?`,
                 () => {
@@ -172,9 +189,8 @@ frappe.ui.form.on('Customer', {
                 }
             );
         }
-
-        // Existing before_save cleanup & disable automation handled in before_save below
-    },
+    }
+,
 
     customer_primary_address: function(frm) {
         if (frm.doc.custom_automate !== 1 || !frm.doc.customer_primary_address) return;
@@ -196,7 +212,6 @@ frappe.ui.form.on('Customer', {
                     frm.set_value("default_currency", "INR");
                     frm.set_value("default_price_list", "INR Selling");
 
-                    // Get default company
                     frappe.call({
                         method: "frappe.client.get_value",
                         args: {
@@ -208,12 +223,10 @@ frappe.ui.form.on('Customer', {
                             const company = r.message?.name;
                             if (!company) return;
 
-                            // Add account row if not exists
                             if (!frm.doc.accounts || frm.doc.accounts.length === 0) {
                                 let row = frm.add_child("accounts");
                                 row.company = company;
 
-                                // Get Receivable Account
                                 frappe.call({
                                     method: "frappe.client.get_list",
                                     args: {
@@ -236,7 +249,6 @@ frappe.ui.form.on('Customer', {
                                 });
                             }
 
-                            // Get Default Bank Account
                             frappe.call({
                                 method: "frappe.client.get_list",
                                 args: {
@@ -262,30 +274,27 @@ frappe.ui.form.on('Customer', {
         });
     },
 
-    // Using debounced FormHandler for customer_name
     customer_name: function(frm) {
         FormHandler.handle(
             frm,
             'customer_name',
             'enable_customer_automation',
-            (text) => TextFormatter.full(text, true), // allowNumbers = true
+            (text) => TextFormatter.full(text, true),
             (text) => TextFormatter.realTime(text, true)
         );
     },
 
-    // Using debounced FormHandler for customer_details
     customer_details: function(frm) {
         FormHandler.handle(
             frm,
             'customer_details',
             'enable_customer_automation',
-            (text) => TextFormatter.full(text, false), // allowNumbers = false
+            (text) => TextFormatter.full(text, false),
             (text) => TextFormatter.realTime(text, false)
         );
     },
 
     before_save: function(frm) {
-        // Clean up any trailing spaces/commas before saving
         FormHandler.cleanup(frm, ['customer_name', 'customer_details']);
 
         if (frm.doc.custom_automate) {
@@ -329,21 +338,19 @@ function check_automation_enabled(callback) {
 function format_name_generic(name, allowNumbers = false) {
     if (!name) return '';
 
-    const lowercaseWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
-
+    const lowercaseWords = ['a', 'an',  'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
     let regex = allowNumbers ? /[^a-zA-Z0-9\s]/g : /[^a-zA-Z\s]/g;
+
     let formatted = name.replace(regex, '')
         .trim()
         .replace(/\s+/g, ' ')
         .replace(/[,\s]+$/, '')
         .replace(/\(/g, ' (');
 
-    return formatted.split(' ').map((word, index) => {
+    return formatted.split(' ').map(word => {
         if (word === word.toUpperCase()) return word;
-
         const lw = word.toLowerCase();
         if (lowercaseWords.includes(lw)) return lw;
-
         return lw.length >= 4 ? lw.charAt(0).toUpperCase() + lw.slice(1) : lw;
     }).join(' ');
 }

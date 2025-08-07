@@ -24,6 +24,10 @@ frappe.ui.form.on('Contact', {
     last_name: (frm) => handle_name_field(frm, 'last_name'),
 
     validate(frm) {
+        if (!frm._confirmed_fields) {
+            frm._confirmed_fields = {};
+        }
+
         // Detect manual corrections and prompt to add to private dictionary
         let changes = [];
 
@@ -38,10 +42,14 @@ frappe.ui.form.on('Contact', {
 
                     old_words.forEach((word, idx) => {
                         if (new_words[idx] && word !== new_words[idx]) {
-                            changes.push({
-                                original: word,
-                                corrected: new_words[idx]
-                            });
+                            // Only prompt if not already confirmed for this field
+                            if (!frm._confirmed_fields[field.fieldname]) {
+                                changes.push({
+                                    original: word,
+                                    corrected: new_words[idx],
+                                    fieldname: field.fieldname
+                                });
+                            }
                         }
                     });
                 }
@@ -66,14 +74,19 @@ frappe.ui.form.on('Contact', {
                             frm.reload_doc();
                         }
                     });
+                    // Mark this field as confirmed
+                    frm._confirmed_fields[change.fieldname] = true;
                 },
                 () => {
                     // NO
                     frappe.show_alert("Skipped adding to dictionary.");
+                    // Also mark confirmed to avoid repeated popups for this field
+                    frm._confirmed_fields[change.fieldname] = true;
                 }
             );
         }
     },
+
 
     before_save(frm) {
         // Clear all pending timeouts before save

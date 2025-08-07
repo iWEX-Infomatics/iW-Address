@@ -153,13 +153,22 @@ frappe.ui.form.on('Employee', {
     },
 
     validate(frm) {
+        if (!frm._popup_shown_fields) {
+            frm._popup_shown_fields = {};
+        }
+
         // Detect corrections done manually by user
         let changes = [];
 
         frm.meta.fields.forEach(field => {
             if (["Data", "Small Text", "Text", "Long Text", "Text Editor"].includes(field.fieldtype)) {
-                const old_val = frm._original_values[field.fieldname];
-                const new_val = frm.doc[field.fieldname];
+                const fieldname = field.fieldname;
+
+                // Agar is field ka popup pehle hi dikha chuka hai, skip karen
+                if (frm._popup_shown_fields[fieldname]) return;
+
+                const old_val = frm._original_values[fieldname];
+                const new_val = frm.doc[fieldname];
 
                 if (old_val && new_val && old_val !== new_val) {
                     const old_words = old_val.split(/\s+/);
@@ -168,6 +177,7 @@ frappe.ui.form.on('Employee', {
                     old_words.forEach((word, idx) => {
                         if (new_words[idx] && word !== new_words[idx]) {
                             changes.push({
+                                fieldname,
                                 original: word,
                                 corrected: new_words[idx]
                             });
@@ -179,6 +189,11 @@ frappe.ui.form.on('Employee', {
 
         if (changes.length > 0) {
             const change = changes[0];  // only first correction
+            const fieldname = change.fieldname;
+
+            // Mark popup shown for this field to avoid multiple popups
+            frm._popup_shown_fields[fieldname] = true;
+
             frappe.confirm(
                 `You corrected "<b>${change.original}</b>" to "<b>${change.corrected}</b>".<br><br>Do you want to add it to your Private Dictionary?`,
                 () => {

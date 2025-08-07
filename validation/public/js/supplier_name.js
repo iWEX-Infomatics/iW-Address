@@ -111,15 +111,18 @@ frappe.ui.form.on('Supplier', {
             console.log("Form is new. Initializing custom_automate.");
             frm.set_value('custom_automate', 1);
         }
-        // Initialize original values store
         frm._original_values = {};
+        frm._popup_shown_fields = {};  // <-- yahan add karein
     },
 
     refresh: function(frm) {
-        // Save original values for manual correction detection
         frm._original_values['supplier_name'] = frm.doc.supplier_name;
         frm._original_values['supplier_details'] = frm.doc.supplier_details;
+
+        // Optional: agar form refresh hota hai to popup tracking reset karna ho to
+        frm._popup_shown_fields = {};
     },
+
 
     supplier_primary_address: function(frm) {
         if (frm.doc.custom_automate !== 1 || !frm.doc.supplier_primary_address) return;
@@ -270,9 +273,12 @@ function get_account_name(company, account_type, callback) {
     });
 }
 
-// Manual correction detection and popup for Private Dictionary
 function checkForManualCorrection(frm, fieldname) {
     if (!frm._original_values) return;
+    if (!frm._popup_shown_fields) frm._popup_shown_fields = {};
+
+    // Agar is field ke liye popup pehle hi dikh chuka hai to return kar do
+    if (frm._popup_shown_fields[fieldname]) return;
 
     const oldVal = frm._original_values[fieldname] || '';
     const newVal = frm.doc[fieldname] || '';
@@ -285,6 +291,9 @@ function checkForManualCorrection(frm, fieldname) {
             if (newWords[i] && oldWords[i] !== newWords[i]) {
                 const original = oldWords[i];
                 const corrected = newWords[i];
+
+                // Mark popup as shown for this field so it won't repeat
+                frm._popup_shown_fields[fieldname] = true;
 
                 frappe.confirm(
                     `You corrected "<b>${original}</b>" to "<b>${corrected}</b>".<br><br>Do you want to add it to your Private Dictionary?`,

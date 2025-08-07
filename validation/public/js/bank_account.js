@@ -103,9 +103,10 @@ const TextFormatter = {
 
 frappe.ui.form.on('Bank Account', {
     onload(frm) {
+        // Set automation flag on new docs
         if (frm.is_new()) frm.set_value('custom_automate', 1);
 
-        // Capture original values on load for autocorrect tracking
+        // Capture original values on load
         if (!frm._original_values) {
             frm._original_values = {};
             frm.meta.fields.forEach(field => {
@@ -113,6 +114,11 @@ frappe.ui.form.on('Bank Account', {
                     frm._original_values[field.fieldname] = frm.doc[field.fieldname];
                 }
             });
+        }
+
+        // Track which fields have shown the popup already
+        if (!frm._popup_shown_fields) {
+            frm._popup_shown_fields = {};
         }
     },
 
@@ -140,28 +146,38 @@ frappe.ui.form.on('Bank Account', {
             }
         });
 
-        if (changes.length > 0) {
-            const change = changes[0]; // show only first correction
-            frappe.confirm(
-                `You corrected "<b>${change.original}</b>" to "<b>${change.corrected}</b>".<br><br>Do you want to add it to your Private Dictionary?`,
-                () => {
-                    frappe.call({
-                        method: "validation.validation.doctype.private_dictionary.private_dictionary.add_to_dictionary",
-                        args: {
-                            original: change.original,
-                            corrected: change.corrected
-                        },
-                        callback: () => {
-                            frappe.show_alert("Word added to Private Dictionary!");
-                            frm.reload_doc();
-                        }
-                    });
-                },
-                () => {
-                    frappe.show_alert("Skipped adding to dictionary.");
-                }
-            );
-        }
+    if (changes.length > 0) {
+        const change = changes[0];
+        const fieldname = frm.meta.fields.find(f => {
+            const old_val = frm._original_values[f.fieldname];
+            const new_val = frm.doc[f.fieldname];
+            return old_val && new_val && old_val.includes(change.original) && new_val.includes(change.corrected);
+        })?.fieldname;
+
+        if (fieldname && frm._popup_shown_fields?.[fieldname]) return;
+
+        if (fieldname) frm._popup_shown_fields[fieldname] = true;
+
+        frappe.confirm(
+            `You corrected "<b>${change.original}</b>" to "<b>${change.corrected}</b>".<br><br>Do you want to add it to your Private Dictionary?`,
+            () => {
+                frappe.call({
+                    method: "validation.validation.doctype.private_dictionary.private_dictionary.add_to_dictionary",
+                    args: {
+                        original: change.original,
+                        corrected: change.corrected
+                    },
+                    callback: () => {
+                        frappe.show_alert("Word added to Private Dictionary!");
+                        frm.reload_doc();
+                    }
+                });
+            },
+            () => {
+                frappe.show_alert("Skipped adding to dictionary.");
+            }
+        );
+    }
     },
 
     before_save(frm) {

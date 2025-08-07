@@ -19,10 +19,14 @@ frappe.ui.form.on('Address', {
             });
         }
 
+        // 👇 ADD THIS: Track shown popup per field
+        frm._popup_shown_fields = {};
+
         check_automation_enabled(frm, () => {
             frm.trigger('set_address_title');
         });
-    },
+    }
+,
 
     links_on_form_rendered(frm) {
         frm.trigger('set_address_title');
@@ -89,12 +93,17 @@ frappe.ui.form.on('Address', {
     },
 
     validate(frm) {
-        // Autocorrect change detection & prompt
         let changes = [];
+
         frm.meta.fields.forEach(field => {
+            const fieldname = field.fieldname;
+
             if (["Data", "Small Text", "Text", "Long Text", "Text Editor"].includes(field.fieldtype)) {
-                const old_val = frm._original_values[field.fieldname];
-                const new_val = frm.doc[field.fieldname];
+                const old_val = frm._original_values?.[fieldname];
+                const new_val = frm.doc[fieldname];
+
+                // 👇 Skip if already shown for this field
+                if (frm._popup_shown_fields?.[fieldname]) return;
 
                 if (old_val && new_val && old_val !== new_val) {
                     const old_words = old_val.split(/\s+/);
@@ -103,6 +112,7 @@ frappe.ui.form.on('Address', {
                     old_words.forEach((word, idx) => {
                         if (new_words[idx] && word !== new_words[idx]) {
                             changes.push({
+                                fieldname,
                                 original: word,
                                 corrected: new_words[idx]
                             });
@@ -113,7 +123,11 @@ frappe.ui.form.on('Address', {
         });
 
         if (changes.length > 0) {
-            const change = changes[0]; // show only first correction
+            const change = changes[0]; // Show only first correction
+
+            // 👇 Mark this field so we don’t prompt again
+            frm._popup_shown_fields[change.fieldname] = true;
+
             frappe.confirm(
                 `You corrected "<b>${change.original}</b>" to "<b>${change.corrected}</b>".<br><br>Do you want to add it to your Private Dictionary?`,
                 () => {
@@ -134,7 +148,8 @@ frappe.ui.form.on('Address', {
                 }
             );
         }
-    },
+    }
+,
 
     before_save(frm) {
         // Clear all pending timeouts before save
