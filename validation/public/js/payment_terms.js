@@ -70,7 +70,7 @@ const TextFormatter = {
     
     realTime(text, allowNumbers = false) {
         if (!text || text.endsWith(' ')) return text;
-        
+
         return text.split(' ').map((word, index) => {
             if (!word || word === word.toUpperCase()) return word;
             const lower = word.toLowerCase();
@@ -81,9 +81,9 @@ const TextFormatter = {
     
     full(text, allowNumbers = false) {
         if (!text || text.endsWith(' ')) return text;
-        
+
         const regex = allowNumbers ? /[^a-zA-Z0-9\s]/g : /[^a-zA-Z\s]/g;
-        
+
         return text
             .replace(regex, '')
             .trim()
@@ -100,6 +100,7 @@ const TextFormatter = {
             })
             .join(' ');
     }
+
 };
 
 frappe.ui.form.on('Payment Term', {
@@ -170,20 +171,22 @@ function formatText(text) {
     const lowercaseWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
 
     return text
-        .replace(/[^a-zA-Z\s]/g, '')
+        .replace(/[^a-zA-Z\s]/g, '')                // Remove unwanted characters
         .trim()
         .replace(/\s+/g, ' ')
         .replace(/[,\s]+$/, '')
         .replace(/\(/g, ' (')
         .split(' ')
+        .filter(word => word.length > 0)
         .map((word, index) => {
-            if (word === word.toUpperCase()) return word;
+            if (word === word.toUpperCase()) return word; // Preserve acronyms
             const lower = word.toLowerCase();
             if (lowercaseWords.includes(lower) && index !== 0) return lower;
             return lower.charAt(0).toUpperCase() + lower.slice(1);
         })
         .join(' ');
 }
+
 
 function checkAutomationEnabled(fieldName, callback) {
     frappe.call({

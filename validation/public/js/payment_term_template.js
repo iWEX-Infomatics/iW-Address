@@ -70,36 +70,48 @@ const TextFormatter = {
     
     realTime(text, allowNumbers = false) {
         if (!text || text.endsWith(' ')) return text;
-        
-        return text.split(' ').map((word, i) => {
-            if (!word || word === word.toUpperCase()) return word;
-            const lower = word.toLowerCase();
-            if (this.lowercaseWords.includes(lower) && i !== 0) return lower;
-            return lower.charAt(0).toUpperCase() + lower.slice(1);
-        }).join(' ');
+
+        return text
+            .split(' ')
+            .map((word, i) => {
+                if (!word || word === word.toUpperCase()) return word;
+
+                const lower = word.toLowerCase();
+
+                if (this.lowercaseWords.includes(lower) && i !== 0) return lower;
+
+                return lower.charAt(0).toUpperCase() + lower.slice(1);
+            })
+            .join(' ');
     },
     
     full(text, allowNumbers = false) {
         if (!text || text.endsWith(' ')) return text;
-        
+
         const regex = allowNumbers ? /[^a-zA-Z0-9\s]/g : /[^a-zA-Z\s]/g;
-        
+
         return text
-            .replace(regex, '')
-            .trim()
-            .replace(/\s+/g, ' ')
-            .replace(/[,\s]+$/, '')
-            .replace(/\(/g, ' (')
-            .split(' ')
-            .filter(word => word.length > 0)
+            .replace(regex, '')                         // Remove unwanted characters
+            .trim()                                     // Trim leading/trailing spaces
+            .replace(/\s+/g, ' ')                       // Collapse multiple spaces
+            .replace(/[,\s]+$/, '')                     // Remove trailing commas/spaces
+            .replace(/\(/g, ' (')                       // Add space before "("
+            .split(' ')                                 // Split into words
+            .filter(word => word.length > 0)            // Remove empty entries
             .map((word, i) => {
-                if (word === word.toUpperCase()) return word;
+                if (word === word.toUpperCase()) return word;  // Preserve acronyms
+
                 const lower = word.toLowerCase();
+
+                // Keep lowercaseWords lowercase (except first word)
                 if (this.lowercaseWords.includes(lower) && i !== 0) return lower;
+
+                // Capitalize everything else (no 4-char rule)
                 return lower.charAt(0).toUpperCase() + lower.slice(1);
             })
             .join(' ');
     }
+
 };
 
 frappe.ui.form.on('Payment Terms Template', {

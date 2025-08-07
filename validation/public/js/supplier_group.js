@@ -64,26 +64,25 @@ const FormHandler = {
     }
 };
 
-// Text formatting utilities
 const TextFormatter = {
     lowercaseWords: ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'],
     
     realTime(text, allowNumbers = false) {
         if (!text || text.endsWith(' ')) return text;
-        
+
         return text.split(' ').map((word, index) => {
-            if (!word || word === word.toUpperCase()) return word;
+            if (!word || word === word.toUpperCase()) return word; // keep acronyms
             const lower = word.toLowerCase();
             if (this.lowercaseWords.includes(lower) && index !== 0) return lower;
-            return word.length >= 4 ? lower.charAt(0).toUpperCase() + lower.slice(1) : lower;
+            return lower.charAt(0).toUpperCase() + lower.slice(1);
         }).join(' ');
     },
-    
+
     full(text, allowNumbers = false) {
         if (!text || text.endsWith(' ')) return text;
-        
+
         const regex = allowNumbers ? /[^a-zA-Z0-9\s]/g : /[^a-zA-Z\s]/g;
-        
+
         return text
             .replace(regex, '')
             .trim()
@@ -96,11 +95,12 @@ const TextFormatter = {
                 if (word === word.toUpperCase()) return word;
                 const lower = word.toLowerCase();
                 if (this.lowercaseWords.includes(lower) && index !== 0) return lower;
-                return word.length >= 4 ? lower.charAt(0).toUpperCase() + lower.slice(1) : lower;
+                return lower.charAt(0).toUpperCase() + lower.slice(1);
             })
             .join(' ');
     }
 };
+
 
 frappe.ui.form.on('Supplier Group', {
     onload(frm) {

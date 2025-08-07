@@ -2,12 +2,12 @@
 const FormHandler = {
     timeouts: {},
     lastValues: {},
-    
+
     handle(frm, fieldname, automationField, formatFunction, realTimeFunction) {
         if (!frm.doc.custom_automate) return;
-        
+
         const currentValue = frm.doc[fieldname] || '';
-        
+
         // Real-time formatting check
         this.checkAutomation(automationField, (enabled) => {
             if (enabled) {
@@ -18,7 +18,7 @@ const FormHandler = {
                 }
             }
         });
-        
+
         // Debounced full formatting
         clearTimeout(this.timeouts[fieldname]);
         this.timeouts[fieldname] = setTimeout(() => {
@@ -26,7 +26,7 @@ const FormHandler = {
                 if (enabled) {
                     const valueToFormat = frm.doc[fieldname] || '';
                     if (this.lastValues[fieldname] === valueToFormat) return;
-                    
+
                     const formatted = formatFunction(valueToFormat);
                     if (valueToFormat !== formatted) {
                         this.lastValues[fieldname] = formatted;
@@ -38,11 +38,11 @@ const FormHandler = {
             });
         }, 300);
     },
-    
+
     cleanup(frm, fields) {
         Object.values(this.timeouts).forEach(clearTimeout);
         this.timeouts = {};
-        
+
         fields.forEach(fieldname => {
             const value = frm.doc[fieldname];
             if (value) {
@@ -51,7 +51,7 @@ const FormHandler = {
             }
         });
     },
-    
+
     checkAutomation(field, callback) {
         frappe.call({
             method: 'frappe.client.get_single_value',
@@ -67,23 +67,24 @@ const FormHandler = {
 // Text formatting utilities
 const TextFormatter = {
     lowercaseWords: ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'],
-    
+
     realTime(text, allowNumbers = false) {
         if (!text || text.endsWith(' ')) return text;
-        
+
         return text.split(' ').map(word => {
             if (!word || word === word.toUpperCase()) return word;
             const lower = word.toLowerCase();
-            return this.lowercaseWords.includes(lower) ? lower : 
-                   word.length >= 4 ? lower.charAt(0).toUpperCase() + lower.slice(1) : lower;
+            return this.lowercaseWords.includes(lower)
+                ? lower
+                : lower.charAt(0).toUpperCase() + lower.slice(1);
         }).join(' ');
     },
-    
+
     full(text, allowNumbers = false) {
         if (!text || text.endsWith(' ')) return text;
-        
+
         const regex = allowNumbers ? /[^a-zA-Z0-9\s]/g : /[^a-zA-Z\s]/g;
-        
+
         return text
             .replace(regex, '')
             .trim()
@@ -95,8 +96,9 @@ const TextFormatter = {
             .map(word => {
                 if (word === word.toUpperCase()) return word;
                 const lower = word.toLowerCase();
-                return this.lowercaseWords.includes(lower) ? lower :
-                       word.length >= 4 ? lower.charAt(0).toUpperCase() + lower.slice(1) : lower;
+                return this.lowercaseWords.includes(lower)
+                    ? lower
+                    : lower.charAt(0).toUpperCase() + lower.slice(1);
             })
             .join(' ');
     }
@@ -108,7 +110,7 @@ const EmailFormatter = {
         if (!email) return email;
         return email.toLowerCase();
     },
-    
+
     full(email) {
         if (!email) return '';
         return email
@@ -150,46 +152,43 @@ frappe.ui.form.on('Employee', {
     // Using debounced FormHandler for name fields
     first_name: function(frm) {
         FormHandler.handle(
-            frm, 
-            'first_name', 
-            'enable_employee_automation', 
+            frm,
+            'first_name',
+            'enable_employee_automation',
             (text) => TextFormatter.full(text, false),
             (text) => TextFormatter.realTime(text, false)
         );
-        // Update employee name after formatting
         setTimeout(() => update_employee_name(frm), 350);
     },
 
     middle_name: function(frm) {
         FormHandler.handle(
-            frm, 
-            'middle_name', 
-            'enable_employee_automation', 
+            frm,
+            'middle_name',
+            'enable_employee_automation',
             (text) => TextFormatter.full(text, false),
             (text) => TextFormatter.realTime(text, false)
         );
-        // Update employee name after formatting
         setTimeout(() => update_employee_name(frm), 350);
     },
 
     last_name: function(frm) {
         FormHandler.handle(
-            frm, 
-            'last_name', 
-            'enable_employee_automation', 
+            frm,
+            'last_name',
+            'enable_employee_automation',
             (text) => TextFormatter.full(text, false),
             (text) => TextFormatter.realTime(text, false)
         );
-        // Update employee name after formatting
         setTimeout(() => update_employee_name(frm), 350);
     },
 
     // Using debounced FormHandler for other text fields
     family_background: function(frm) {
         FormHandler.handle(
-            frm, 
-            'family_background', 
-            'enable_employee_automation', 
+            frm,
+            'family_background',
+            'enable_employee_automation',
             (text) => TextFormatter.full(text, false),
             (text) => TextFormatter.realTime(text, false)
         );
@@ -197,9 +196,9 @@ frappe.ui.form.on('Employee', {
 
     health_details: function(frm) {
         FormHandler.handle(
-            frm, 
-            'health_details', 
-            'enable_employee_automation', 
+            frm,
+            'health_details',
+            'enable_employee_automation',
             (text) => TextFormatter.full(text, false),
             (text) => TextFormatter.realTime(text, false)
         );
@@ -207,9 +206,9 @@ frappe.ui.form.on('Employee', {
 
     person_to_be_contacted: function(frm) {
         FormHandler.handle(
-            frm, 
-            'person_to_be_contacted', 
-            'enable_employee_automation', 
+            frm,
+            'person_to_be_contacted',
+            'enable_employee_automation',
             (text) => TextFormatter.full(text, false),
             (text) => TextFormatter.realTime(text, false)
         );
@@ -217,9 +216,9 @@ frappe.ui.form.on('Employee', {
 
     relation: function(frm) {
         FormHandler.handle(
-            frm, 
-            'relation', 
-            'enable_employee_automation', 
+            frm,
+            'relation',
+            'enable_employee_automation',
             (text) => TextFormatter.full(text, false),
             (text) => TextFormatter.realTime(text, false)
         );
@@ -227,9 +226,9 @@ frappe.ui.form.on('Employee', {
 
     bio: function(frm) {
         FormHandler.handle(
-            frm, 
-            'bio', 
-            'enable_employee_automation', 
+            frm,
+            'bio',
+            'enable_employee_automation',
             (text) => TextFormatter.full(text, false),
             (text) => TextFormatter.realTime(text, false)
         );
@@ -238,9 +237,9 @@ frappe.ui.form.on('Employee', {
     // Using debounced FormHandler for email fields
     personal_email: function(frm) {
         FormHandler.handle(
-            frm, 
-            'personal_email', 
-            'enable_employee_automation', 
+            frm,
+            'personal_email',
+            'enable_employee_automation',
             (email) => EmailFormatter.full(email),
             (email) => EmailFormatter.realTime(email)
         );
@@ -248,9 +247,9 @@ frappe.ui.form.on('Employee', {
 
     company_email: function(frm) {
         FormHandler.handle(
-            frm, 
-            'company_email', 
-            'enable_employee_automation', 
+            frm,
+            'company_email',
+            'enable_employee_automation',
             (email) => EmailFormatter.full(email),
             (email) => EmailFormatter.realTime(email)
         );
@@ -268,13 +267,12 @@ frappe.ui.form.on('Employee', {
     },
 
     before_save: function(frm) {
-        // Clean up any trailing spaces/commas before saving
         FormHandler.cleanup(frm, [
-            'first_name', 'middle_name', 'last_name', 
-            'family_background', 'health_details', 
+            'first_name', 'middle_name', 'last_name',
+            'family_background', 'health_details',
             'person_to_be_contacted', 'relation', 'bio'
         ]);
-        
+
         if (frm.doc.custom_automate) {
             console.log("Before Save: Disabling custom_automate");
             frm.set_value('custom_automate', 0);
@@ -366,9 +364,9 @@ function format_name(name) {
         .map((word, index) => {
             if (word === word.toUpperCase()) return word;
             const lower = word.toLowerCase();
-            if (lowercaseWords.includes(lower)) return lower;
-            if (word.length >= 4) return lower.charAt(0).toUpperCase() + lower.slice(1);
-            return lower;
+            return lowercaseWords.includes(lower)
+                ? lower
+                : lower.charAt(0).toUpperCase() + lower.slice(1);
         })
         .join(' ');
 }

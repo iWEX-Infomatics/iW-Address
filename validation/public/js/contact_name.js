@@ -85,26 +85,51 @@ function handle_name_field(frm, fieldname) {
 
 function format_name_realtime(name) {
     if (!name) return '';
-    
-    // Don't format if user is still typing (ends with space)
-    if (name.endsWith(' ')) {
-        return name;
-    }
-    
+    if (name.endsWith(' ')) return name;
+
     const lowercaseWords = [
-        'a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to',
-        'from', 'by', 'in', 'of', 'with'
+        'a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor',
+        'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'
     ];
-    
+
     return name
         .split(' ')
         .map(word => {
             if (!word) return word;
-            if (word === word.toUpperCase()) return word; // Keep all caps words as they are
+            if (word === word.toUpperCase()) return word;
+
             const lower = word.toLowerCase();
-            if (lowercaseWords.includes(lower)) return lower; // Keep small words lowercase
-            if (word.length >= 4) return lower.charAt(0).toUpperCase() + lower.slice(1); // Capitalize immediately when 4+ chars
-            return lower; // Keep short words lowercase
+            return lowercaseWords.includes(lower)
+                ? lower
+                : lower.charAt(0).toUpperCase() + lower.slice(1);
+        })
+        .join(' ');
+}
+
+function format_name(name) {
+    if (!name) return '';
+    if (name.endsWith(' ')) return name;
+
+    const lowercaseWords = [
+        'a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor',
+        'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'
+    ];
+
+    return name
+        .replace(/[^a-zA-Z\s]/g, '')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .replace(/[,\s]+$/, '')
+        .replace(/\(/g, ' (')
+        .split(' ')
+        .filter(word => word.length > 0)
+        .map(word => {
+            if (word === word.toUpperCase()) return word;
+
+            const lower = word.toLowerCase();
+            return lowercaseWords.includes(lower)
+                ? lower
+                : lower.charAt(0).toUpperCase() + lower.slice(1);
         })
         .join(' ');
 }

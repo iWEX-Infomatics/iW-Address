@@ -180,21 +180,24 @@ const ItemTextFormatter = {
         }).join(' ');
     },
     
-    full(text, isItemName = false) {
-        if (!text || text.endsWith(' ')) return text;
-        
-        // Remove unwanted characters (keep underscore for item_name)
-        let formattedText = isItemName ? 
-            text.replace(/[^a-zA-Z0-9\s\-_]/g, '') : 
-            text.replace(/[^a-zA-Z0-9\s\-]/g, '');
+full(text, isItemName = false) {
+    if (!text || text.endsWith(' ')) return text;
 
-        // Clean up spaces and punctuation
-        formattedText = formattedText.trim().replace(/\s+/g, ' ');
-        formattedText = formattedText.replace(/[,\s]+$/, '');
-        formattedText = formattedText.replace(/\(/g, ' (');
+    // Remove unwanted characters (keep underscore for item_name)
+    let formattedText = isItemName ? 
+        text.replace(/[^a-zA-Z0-9\s\-_]/g, '') : 
+        text.replace(/[^a-zA-Z0-9\s\-]/g, '');
 
-        // Apply capitalization rules
-        return formattedText.split(' ').filter(word => word.length > 0).map((word, index) => {
+    // Clean up spaces and punctuation
+    formattedText = formattedText.trim().replace(/\s+/g, ' ');
+    formattedText = formattedText.replace(/[,\s]+$/, '');
+    formattedText = formattedText.replace(/\(/g, ' (');
+
+    // Apply capitalization rules
+    return formattedText
+        .split(' ')
+        .filter(word => word.length > 0)
+        .map((word, index) => {
             // For non-item-name formatting, preserve all-uppercase words
             if (!isItemName && word === word.toUpperCase()) {
                 return word;
@@ -207,14 +210,12 @@ const ItemTextFormatter = {
                 return lowerWord;
             }
 
-            // Capitalize words with 4+ characters, or all words for item names
-            if (word.length >= 4 || isItemName) {
-                return word.charAt(0).toUpperCase() + (isItemName ? word.slice(1) : lowerWord.slice(1));
-            }
+            // Capitalize all words (no length condition)
+            return word.charAt(0).toUpperCase() + (isItemName ? word.slice(1) : lowerWord.slice(1));
+        })
+        .join(' ');
+}
 
-            return isItemName ? word : lowerWord;
-        }).join(' ');
-    }
 };
 
 // Helper functions for tax handling

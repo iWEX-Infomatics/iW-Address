@@ -2,12 +2,12 @@
 const FormHandler = {
     timeouts: {},
     lastValues: {},
-    
+
     handle(frm, fieldname, automationField, formatFunction, realTimeFunction) {
         if (!frm.doc.custom_automate) return;
-        
+
         const currentValue = frm.doc[fieldname] || '';
-        
+
         // Real-time formatting check
         this.checkAutomation(automationField, (enabled) => {
             if (enabled) {
@@ -18,7 +18,7 @@ const FormHandler = {
                 }
             }
         });
-        
+
         // Debounced full formatting
         clearTimeout(this.timeouts[fieldname]);
         this.timeouts[fieldname] = setTimeout(() => {
@@ -26,7 +26,7 @@ const FormHandler = {
                 if (enabled) {
                     const valueToFormat = frm.doc[fieldname] || '';
                     if (this.lastValues[fieldname] === valueToFormat) return;
-                    
+
                     const formatted = formatFunction(valueToFormat);
                     if (valueToFormat !== formatted) {
                         this.lastValues[fieldname] = formatted;
@@ -38,11 +38,11 @@ const FormHandler = {
             });
         }, 300);
     },
-    
+
     cleanup(frm, fields) {
         Object.values(this.timeouts).forEach(clearTimeout);
         this.timeouts = {};
-        
+
         fields.forEach(fieldname => {
             const value = frm.doc[fieldname];
             if (value) {
@@ -51,7 +51,7 @@ const FormHandler = {
             }
         });
     },
-    
+
     checkAutomation(field, callback) {
         frappe.call({
             method: 'frappe.client.get_single_value',
@@ -67,23 +67,23 @@ const FormHandler = {
 // Text formatting utilities
 const TextFormatter = {
     lowercaseWords: ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'],
-    
+
     realTime(text, allowNumbers = false) {
         if (!text || text.endsWith(' ')) return text;
-        
+
         return text.split(' ').map((word, index) => {
             if (!word || word === word.toUpperCase()) return word;
             const lower = word.toLowerCase();
             if (this.lowercaseWords.includes(lower) && index !== 0) return lower;
-            return word.length >= 4 ? lower.charAt(0).toUpperCase() + lower.slice(1) : lower;
+            return lower.charAt(0).toUpperCase() + lower.slice(1);
         }).join(' ');
     },
-    
+
     full(text, allowNumbers = false) {
         if (!text || text.endsWith(' ')) return text;
-        
+
         const regex = allowNumbers ? /[^a-zA-Z0-9\s]/g : /[^a-zA-Z\s]/g;
-        
+
         return text
             .replace(regex, '')
             .trim()
@@ -96,7 +96,7 @@ const TextFormatter = {
                 if (word === word.toUpperCase()) return word;
                 const lower = word.toLowerCase();
                 if (this.lowercaseWords.includes(lower) && index !== 0) return lower;
-                return word.length >= 4 ? lower.charAt(0).toUpperCase() + lower.slice(1) : lower;
+                return lower.charAt(0).toUpperCase() + lower.slice(1);
             })
             .join(' ');
     }
@@ -137,32 +137,29 @@ frappe.ui.form.on('Supplier', {
         }
     },
 
-    // Using debounced FormHandler for supplier_name
     supplier_name: function(frm) {
         FormHandler.handle(
-            frm, 
-            'supplier_name', 
-            'enable_supplier_automation', 
-            (text) => TextFormatter.full(text, false), // allowNumbers = false
+            frm,
+            'supplier_name',
+            'enable_supplier_automation',
+            (text) => TextFormatter.full(text, false),
             (text) => TextFormatter.realTime(text, false)
         );
     },
 
-    // Using debounced FormHandler for supplier_details
     supplier_details: function(frm) {
         FormHandler.handle(
-            frm, 
-            'supplier_details', 
-            'enable_supplier_automation', 
-            (text) => TextFormatter.full(text, false), // allowNumbers = false
+            frm,
+            'supplier_details',
+            'enable_supplier_automation',
+            (text) => TextFormatter.full(text, false),
             (text) => TextFormatter.realTime(text, false)
         );
     },
 
     before_save: function(frm) {
-        // Clean up any trailing spaces/commas before saving
         FormHandler.cleanup(frm, ['supplier_name', 'supplier_details']);
-        
+
         if (frm.doc.custom_automate) {
             console.log("Before Save: Disabling custom_automate");
             frm.set_value('custom_automate', 0);
@@ -187,7 +184,6 @@ function set_indian_defaults(frm, account_type) {
             if (r.message) {
                 let company = r.message.name;
 
-                // Add or update accounts
                 if (!frm.doc.accounts || frm.doc.accounts.length === 0) {
                     add_account_row(frm, company, account_type);
                 } else {
@@ -202,7 +198,6 @@ function set_indian_defaults(frm, account_type) {
                     });
                 }
 
-                // Set default bank account (only once)
                 if (account_type === "Receivable") {
                     frappe.call({
                         method: "frappe.client.get_list",
@@ -306,7 +301,7 @@ function format_name(name) {
         if (word === word.toUpperCase()) return word;
         const lower = word.toLowerCase();
         if (lowercaseWords.includes(lower) && index !== 0) return lower;
-        return lower.length >= 4 ? lower.charAt(0).toUpperCase() + lower.slice(1) : lower;
+        return lower.charAt(0).toUpperCase() + lower.slice(1);
     }).join(' ');
 
     return formattedName;

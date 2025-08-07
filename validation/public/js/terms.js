@@ -2,12 +2,12 @@
 const FormHandler = {
     timeouts: {},
     lastValues: {},
-    
+
     handle(frm, fieldname, automationField, formatFunction, realTimeFunction) {
         if (!frm.doc.custom_automate) return;
-        
+
         const currentValue = frm.doc[fieldname] || '';
-        
+
         // Real-time formatting check
         this.checkAutomation(automationField, (enabled) => {
             if (enabled) {
@@ -18,7 +18,7 @@ const FormHandler = {
                 }
             }
         });
-        
+
         // Debounced full formatting
         clearTimeout(this.timeouts[fieldname]);
         this.timeouts[fieldname] = setTimeout(() => {
@@ -26,7 +26,7 @@ const FormHandler = {
                 if (enabled) {
                     const valueToFormat = frm.doc[fieldname] || '';
                     if (this.lastValues[fieldname] === valueToFormat) return;
-                    
+
                     const formatted = formatFunction(valueToFormat);
                     if (valueToFormat !== formatted) {
                         this.lastValues[fieldname] = formatted;
@@ -38,11 +38,11 @@ const FormHandler = {
             });
         }, 300);
     },
-    
+
     cleanup(frm, fields) {
         Object.values(this.timeouts).forEach(clearTimeout);
         this.timeouts = {};
-        
+
         fields.forEach(fieldname => {
             const value = frm.doc[fieldname];
             if (value) {
@@ -51,7 +51,7 @@ const FormHandler = {
             }
         });
     },
-    
+
     checkAutomation(field, callback) {
         frappe.call({
             method: 'frappe.client.get_single_value',
@@ -67,10 +67,10 @@ const FormHandler = {
 // Text formatting utilities
 const TextFormatter = {
     lowercaseWords: ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'],
-    
+
     realTime(text, allowNumbers = false) {
         if (!text || text.endsWith(' ')) return text;
-        
+
         return text.split(' ').map((word, index) => {
             if (!word || word === word.toUpperCase()) return word;
             const lower = word.toLowerCase();
@@ -78,12 +78,12 @@ const TextFormatter = {
             return lower.charAt(0).toUpperCase() + lower.slice(1);
         }).join(' ');
     },
-    
+
     full(text, allowNumbers = false) {
         if (!text || text.endsWith(' ')) return text;
-        
+
         const regex = allowNumbers ? /[^a-zA-Z0-9\s]/g : /[^a-zA-Z\s]/g;
-        
+
         return text
             .replace(regex, '')
             .trim()
@@ -113,10 +113,10 @@ frappe.ui.form.on('Terms and Conditions', {
     // Using debounced FormHandler for title
     title(frm) {
         FormHandler.handle(
-            frm, 
-            'title', 
-            'custom_terms_and_conditions', 
-            (text) => TextFormatter.full(text, false), // allowNumbers = false
+            frm,
+            'title',
+            'custom_terms_and_conditions',
+            (text) => TextFormatter.full(text, false),
             (text) => TextFormatter.realTime(text, false)
         );
     },
@@ -124,10 +124,10 @@ frappe.ui.form.on('Terms and Conditions', {
     // Using debounced FormHandler for terms
     terms(frm) {
         FormHandler.handle(
-            frm, 
-            'terms', 
-            'custom_terms_and_conditions', 
-            (text) => TextFormatter.full(text, false), // allowNumbers = false
+            frm,
+            'terms',
+            'custom_terms_and_conditions',
+            (text) => TextFormatter.full(text, false),
             (text) => TextFormatter.realTime(text, false)
         );
     },
@@ -135,11 +135,10 @@ frappe.ui.form.on('Terms and Conditions', {
     before_save(frm) {
         // Clean up any trailing spaces/commas before saving
         FormHandler.cleanup(frm, ['title', 'terms']);
-        
+
         if (frm.doc.custom_automate === 1) {
             console.log("Before save - disabling custom_automate");
             frm.set_value('custom_automate', 0);
-            // Frappe will save this update automatically
         }
     }
 });
@@ -168,7 +167,6 @@ function format_name(name) {
     const lowercaseWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
 
     let formattedName = name.replace(/[^a-zA-Z\s]/g, '');
-
     formattedName = formattedName.trim().replace(/\s+/g, ' ');
     formattedName = formattedName.replace(/[,\s]+$/, '');
     formattedName = formattedName.replace(/\(/g, ' (');
@@ -180,13 +178,11 @@ function format_name(name) {
 
         const lowerWord = word.toLowerCase();
 
-        if (lowercaseWords.includes(lowerWord)) {
+        if (lowercaseWords.includes(lowerWord) && index !== 0) {
             return lowerWord;
-        } else if (word.length >= 4) {
-            return lowerWord.charAt(0).toUpperCase() + lowerWord.slice(1);
         }
 
-        return lowerWord;
+        return lowerWord.charAt(0).toUpperCase() + lowerWord.slice(1);
     }).join(' ');
 
     return formattedName;

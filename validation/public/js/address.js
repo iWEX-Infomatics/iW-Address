@@ -159,34 +159,34 @@ function handle_address_field(frm, fieldname, is_address_line1 = false) {
 
 function format_text_realtime(text, is_address_line1 = false) {
     if (!text) return '';
-    
+
     // Don't format if user is still typing (ends with space)
     if (text.endsWith(' ')) {
         return text;
     }
-    
+
     const lowercaseWords = [
         'a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor',
         'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'
     ];
-    
+
     return text
         .split(' ')
         .map(word => {
             if (!word) return word;
             if (word === word.toUpperCase()) return word;
             const lower = word.toLowerCase();
-            if (lowercaseWords.includes(lower)) return lower;
-            if (word.length >= 4) return lower.charAt(0).toUpperCase() + lower.slice(1);
-            return lower;
+            return lowercaseWords.includes(lower)
+                ? lower
+                : lower.charAt(0).toUpperCase() + lower.slice(1);
         })
         .join(' ');
 }
 
+
 function format_text(text, is_address_line1 = false) {
     if (!text) return '';
-    
-    // Don't format if user is still typing (ends with space)
+
     if (text.endsWith(' ')) {
         return text;
     }
@@ -212,13 +212,13 @@ function format_text(text, is_address_line1 = false) {
         .map(word => {
             if (word === word.toUpperCase()) return word;
             const lower = word.toLowerCase();
-            if (lowercaseWords.includes(lower)) return lower;
-            return word.length >= 4
-                ? lower.charAt(0).toUpperCase() + lower.slice(1)
-                : lower;
+            return lowercaseWords.includes(lower)
+                ? lower
+                : lower.charAt(0).toUpperCase() + lower.slice(1);
         })
         .join(' ');
 }
+
 
 function check_automation_enabled(frm, callback) {
     frappe.call({

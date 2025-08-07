@@ -64,24 +64,24 @@ const FormHandler = {
     }
 };
 
-// Text formatting utilities
 const TextFormatter = {
     lowercaseWords: ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'],
-    
+
     realTime(text) {
         if (!text || text.endsWith(' ')) return text;
-        
+
         return text.split(' ').map(word => {
             if (!word || word === word.toUpperCase()) return word;
             const lower = word.toLowerCase();
-            return this.lowercaseWords.includes(lower) ? lower : 
-                   word.length >= 4 ? lower.charAt(0).toUpperCase() + lower.slice(1) : lower;
+            return this.lowercaseWords.includes(lower)
+                ? lower
+                : lower.charAt(0).toUpperCase() + lower.slice(1);
         }).join(' ');
     },
-    
+
     full(text) {
         if (!text || text.endsWith(' ')) return text;
-        
+
         return text
             .replace(/[^a-zA-Z\s]/g, '')
             .trim()
@@ -93,12 +93,14 @@ const TextFormatter = {
             .map(word => {
                 if (word === word.toUpperCase()) return word;
                 const lower = word.toLowerCase();
-                return this.lowercaseWords.includes(lower) ? lower :
-                       word.length >= 4 ? lower.charAt(0).toUpperCase() + lower.slice(1) : lower;
+                return this.lowercaseWords.includes(lower)
+                    ? lower
+                    : lower.charAt(0).toUpperCase() + lower.slice(1);
             })
             .join(' ');
     }
 };
+
 
 frappe.ui.form.on('Customer Group', {
     onload(frm) {

@@ -81,9 +81,9 @@ const TextFormatter = {
     
     full(text, allowNumbers = false) {
         if (!text || text.endsWith(' ')) return text;
-        
+
         const regex = allowNumbers ? /[^a-zA-Z0-9\s]/g : /[^a-zA-Z\s]/g;
-        
+
         return text
             .replace(regex, '')
             .trim()
@@ -95,11 +95,13 @@ const TextFormatter = {
             .map(word => {
                 if (word === word.toUpperCase()) return word;
                 const lower = word.toLowerCase();
-                return this.lowercaseWords.includes(lower) ? lower :
-                       word.length >= 4 ? lower.charAt(0).toUpperCase() + lower.slice(1) : lower;
+                return this.lowercaseWords.includes(lower)
+                    ? lower
+                    : lower.charAt(0).toUpperCase() + lower.slice(1);
             })
             .join(' ');
     }
+
 };
 
 frappe.ui.form.on('Customer', {
