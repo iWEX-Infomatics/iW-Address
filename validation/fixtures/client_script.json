@@ -2,6 +2,17 @@
  {
   "docstatus": 0,
   "doctype": "Client Script",
+  "dt": "Customer",
+  "enabled": 0,
+  "modified": "2025-08-05 11:20:27.995221",
+  "module": "Validation",
+  "name": "Customer",
+  "script": "frappe.ui.form.on('Customer', {\r\n    onload(frm) {\r\n        // Set the account_manager to the current user when creating a new Customer\r\n        if (frm.is_new()) {\r\n            frm.set_value(\"account_manager\", frappe.session.user);\r\n        }\r\n    },\r\n\r\n    refresh(frm) {\r\n        // Trigger updates when default_currency changes\r\n        frm.set_df_property('default_currency', 'change', () => update_customer_defaults(frm));\r\n    },\r\n\r\n    default_currency(frm) {\r\n        update_customer_defaults(frm);\r\n    }\r\n});\r\n\r\nfunction update_customer_defaults(frm) {\r\n    // Only proceed if default_currency is set\r\n    if (!frm.doc.default_currency) return;\r\n\r\n    // For INR currency\r\n    if (frm.doc.default_currency === \"INR\") {\r\n        frm.set_value(\"default_price_list\", \"INR Selling\");\r\n        update_accounts_table(frm, \"Auraspace Traders Pvt Ltd\", \"Debtors INR - AT\");\r\n    }\r\n    // For USD currency\r\n    else if (frm.doc.default_currency === \"USD\") {\r\n        frm.set_value(\"default_price_list\", \"USD Selling\");\r\n        update_accounts_table(frm, \"Auraspace Traders Pvt Ltd\", \"Debtors USD - AT\");\r\n    }\r\n    // Clear fields if currency is neither INR nor USD\r\n    else {\r\n        frm.set_value(\"default_price_list\", \"\");\r\n        clear_accounts_table(frm);\r\n    }\r\n}\r\n\r\nfunction update_accounts_table(frm, company, account) {\r\n    // Initialize accounts table if empty\r\n    if (!frm.doc.accounts) {\r\n        frm.doc.accounts = [];\r\n    }\r\n\r\n    // Find existing entry for the company\r\n    let account_row = frm.doc.accounts.find(row => row.company === company);\r\n\r\n    // Update or add the account entry\r\n    if (account_row) {\r\n        account_row.account = account;\r\n    } else {\r\n        frm.add_child(\"accounts\", {\r\n            company: company,\r\n            account: account\r\n        });\r\n    }\r\n\r\n    frm.refresh_field(\"accounts\");\r\n}\r\n\r\nfunction clear_accounts_table(frm) {\r\n    if (frm.doc.accounts && frm.doc.accounts.length > 0) {\r\n        frm.clear_table(\"accounts\");\r\n        frm.refresh_field(\"accounts\");\r\n    }\r\n}",
+  "view": "Form"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Client Script",
   "dt": "Item",
   "enabled": 1,
   "modified": "2025-07-30 18:15:04.859410",

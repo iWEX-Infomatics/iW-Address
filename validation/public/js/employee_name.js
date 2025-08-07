@@ -123,24 +123,27 @@ const EmailFormatter = {
 };
 
 frappe.ui.form.on('Employee', {
-    onload: function(frm) {
+
+    onload(frm) {
         if (frm.is_new()) {
             console.log("Form is new. Initializing custom_automate.");
             frm.set_value('custom_automate', 1);
         }
+        // Initialize original values object
+        frm._original_values = {};
     },
 
-    custom_current_address: function(frm) {
-        console.log("Triggered custom_current_address:", frm.doc.custom_current_address);
-        update_address_display(frm, 'custom_current_address', 'custom_address_display');
-    },
+    refresh(frm) {
+        console.log("******************** Global Autocorrect Loaded ********************");
 
-    custom_permanent_address: function(frm) {
-        console.log("Triggered custom_permanent_address:", frm.doc.custom_permanent_address);
-        update_address_display(frm, 'custom_permanent_address', 'custom_permanent_address_display');
-    },
+        // Save original values of text-like fields for comparison on validate
+        frm._original_values = {};
+        frm.meta.fields.forEach(field => {
+            if (["Data", "Small Text", "Text", "Long Text", "Text Editor"].includes(field.fieldtype)) {
+                frm._original_values[field.fieldname] = frm.doc[field.fieldname];
+            }
+        });
 
-    refresh: function(frm) {
         if (frm.doc.custom_current_address) {
             frm.trigger('custom_current_address');
         }
@@ -149,8 +152,66 @@ frappe.ui.form.on('Employee', {
         }
     },
 
-    // Using debounced FormHandler for name fields
-    first_name: function(frm) {
+    validate(frm) {
+        // Detect corrections done manually by user
+        let changes = [];
+
+        frm.meta.fields.forEach(field => {
+            if (["Data", "Small Text", "Text", "Long Text", "Text Editor"].includes(field.fieldtype)) {
+                const old_val = frm._original_values[field.fieldname];
+                const new_val = frm.doc[field.fieldname];
+
+                if (old_val && new_val && old_val !== new_val) {
+                    const old_words = old_val.split(/\s+/);
+                    const new_words = new_val.split(/\s+/);
+
+                    old_words.forEach((word, idx) => {
+                        if (new_words[idx] && word !== new_words[idx]) {
+                            changes.push({
+                                original: word,
+                                corrected: new_words[idx]
+                            });
+                        }
+                    });
+                }
+            }
+        });
+
+        if (changes.length > 0) {
+            const change = changes[0];  // only first correction
+            frappe.confirm(
+                `You corrected "<b>${change.original}</b>" to "<b>${change.corrected}</b>".<br><br>Do you want to add it to your Private Dictionary?`,
+                () => {
+                    frappe.call({
+                        method: "validation.validation.doctype.private_dictionary.private_dictionary.add_to_dictionary",
+                        args: {
+                            original: change.original,
+                            corrected: change.corrected
+                        },
+                        callback: () => {
+                            frappe.show_alert("Word added to Private Dictionary!");
+                            frm.reload_doc();
+                        }
+                    });
+                },
+                () => {
+                    frappe.show_alert("Skipped adding to dictionary.");
+                }
+            );
+        }
+    },
+
+    // Address fields display update
+    custom_current_address(frm) {
+        update_address_display(frm, 'custom_current_address', 'custom_address_display');
+    },
+
+    custom_permanent_address(frm) {
+        update_address_display(frm, 'custom_permanent_address', 'custom_permanent_address_display');
+    },
+
+    // Debounced FormHandler for name fields
+    first_name(frm) {
         FormHandler.handle(
             frm,
             'first_name',
@@ -161,7 +222,7 @@ frappe.ui.form.on('Employee', {
         setTimeout(() => update_employee_name(frm), 350);
     },
 
-    middle_name: function(frm) {
+    middle_name(frm) {
         FormHandler.handle(
             frm,
             'middle_name',
@@ -172,7 +233,7 @@ frappe.ui.form.on('Employee', {
         setTimeout(() => update_employee_name(frm), 350);
     },
 
-    last_name: function(frm) {
+    last_name(frm) {
         FormHandler.handle(
             frm,
             'last_name',
@@ -183,8 +244,8 @@ frappe.ui.form.on('Employee', {
         setTimeout(() => update_employee_name(frm), 350);
     },
 
-    // Using debounced FormHandler for other text fields
-    family_background: function(frm) {
+    // Debounced FormHandler for other text fields
+    family_background(frm) {
         FormHandler.handle(
             frm,
             'family_background',
@@ -194,7 +255,7 @@ frappe.ui.form.on('Employee', {
         );
     },
 
-    health_details: function(frm) {
+    health_details(frm) {
         FormHandler.handle(
             frm,
             'health_details',
@@ -204,7 +265,7 @@ frappe.ui.form.on('Employee', {
         );
     },
 
-    person_to_be_contacted: function(frm) {
+    person_to_be_contacted(frm) {
         FormHandler.handle(
             frm,
             'person_to_be_contacted',
@@ -214,7 +275,7 @@ frappe.ui.form.on('Employee', {
         );
     },
 
-    relation: function(frm) {
+    relation(frm) {
         FormHandler.handle(
             frm,
             'relation',
@@ -224,7 +285,7 @@ frappe.ui.form.on('Employee', {
         );
     },
 
-    bio: function(frm) {
+    bio(frm) {
         FormHandler.handle(
             frm,
             'bio',
@@ -234,8 +295,8 @@ frappe.ui.form.on('Employee', {
         );
     },
 
-    // Using debounced FormHandler for email fields
-    personal_email: function(frm) {
+    // Debounced FormHandler for email fields
+    personal_email(frm) {
         FormHandler.handle(
             frm,
             'personal_email',
@@ -245,7 +306,7 @@ frappe.ui.form.on('Employee', {
         );
     },
 
-    company_email: function(frm) {
+    company_email(frm) {
         FormHandler.handle(
             frm,
             'company_email',
@@ -256,8 +317,8 @@ frappe.ui.form.on('Employee', {
     },
 
     // Employee number formatting (immediate, no debounce needed)
-    employee_number: function(frm) {
-        if (frm.doc.custom_automate === 1) {
+    employee_number(frm) {
+        if (frm.doc.custom_automate === 1 && frm.doc.employee_number) {
             let corrected = frm.doc.employee_number
                 .toUpperCase()
                 .replace(/[^A-Z0-9\-\/]/g, '')
@@ -266,7 +327,7 @@ frappe.ui.form.on('Employee', {
         }
     },
 
-    before_save: function(frm) {
+    before_save(frm) {
         FormHandler.cleanup(frm, [
             'first_name', 'middle_name', 'last_name',
             'family_background', 'health_details',

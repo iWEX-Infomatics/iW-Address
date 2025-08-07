@@ -34,6 +34,9 @@ const FormHandler = {
                     } else {
                         this.lastValues[fieldname] = valueToFormat;
                     }
+
+                    // Check manual correction after formatting
+                    checkForManualCorrection(frm, fieldname);
                 }
             });
         }, 300);
@@ -109,6 +112,14 @@ frappe.ui.form.on('Payment Term', {
             console.log("New form - setting custom_automate to 1");
             frm.set_value('custom_automate', 1);
         }
+        // Initialize original values store
+        frm._original_values = {};
+    },
+
+    refresh(frm) {
+        // Save original values for manual correction detection
+        frm._original_values['payment_term_name'] = frm.doc.payment_term_name;
+        frm._original_values['description'] = frm.doc.description;
     },
 
     // Using debounced FormHandler for payment_term_name
@@ -117,7 +128,7 @@ frappe.ui.form.on('Payment Term', {
             frm, 
             'payment_term_name', 
             'custom_payment_term', 
-            (text) => TextFormatter.full(text, false), // allowNumbers = false
+            (text) => TextFormatter.full(text, false), 
             (text) => TextFormatter.realTime(text, false)
         );
     },
@@ -128,24 +139,63 @@ frappe.ui.form.on('Payment Term', {
             frm, 
             'description', 
             'custom_payment_term', 
-            (text) => TextFormatter.full(text, false), // allowNumbers = false
+            (text) => TextFormatter.full(text, false), 
             (text) => TextFormatter.realTime(text, false)
         );
     },
 
     before_save(frm) {
-        // Clean up any trailing spaces/commas before saving
+        // Clean up trailing spaces/commas before saving
         FormHandler.cleanup(frm, ['payment_term_name', 'description']);
         
         if (frm.doc.custom_automate === 1) {
             console.log("Before save - disabling custom_automate");
             frm.set_value('custom_automate', 0);
-            // Frappe will save this update automatically
         }
     }
 });
 
-// ========== Legacy Functions (kept for compatibility) ==========
+// Manual correction detection and popup for Private Dictionary
+function checkForManualCorrection(frm, fieldname) {
+    if (!frm._original_values) return;
+
+    const oldVal = frm._original_values[fieldname] || '';
+    const newVal = frm.doc[fieldname] || '';
+
+    if (oldVal && newVal && oldVal !== newVal) {
+        const oldWords = oldVal.split(/\s+/);
+        const newWords = newVal.split(/\s+/);
+
+        for (let i = 0; i < oldWords.length; i++) {
+            if (newWords[i] && oldWords[i] !== newWords[i]) {
+                const original = oldWords[i];
+                const corrected = newWords[i];
+
+                frappe.confirm(
+                    `You corrected "<b>${original}</b>" to "<b>${corrected}</b>".<br><br>Do you want to add it to your Private Dictionary?`,
+                    () => {
+                        frappe.call({
+                            method: "validation.validation.doctype.private_dictionary.private_dictionary.add_to_dictionary",
+                            args: { original, corrected },
+                            callback: () => {
+                                frappe.show_alert("Word added to Private Dictionary!");
+                                frm._original_values[fieldname] = newVal; // update to avoid repeat popup
+                            }
+                        });
+                    },
+                    () => {
+                        frappe.show_alert("Skipped adding to dictionary.");
+                        frm._original_values[fieldname] = newVal; // update to avoid repeat popup
+                    }
+                );
+
+                break; // show popup once per first detected correction
+            }
+        }
+    }
+}
+
+// Legacy helper functions (for compatibility)
 
 function handleFormattingAutomation(frm, fieldName, automationField) {
     if (!frm.doc.custom_automate) {
@@ -171,7 +221,7 @@ function formatText(text) {
     const lowercaseWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
 
     return text
-        .replace(/[^a-zA-Z\s]/g, '')                // Remove unwanted characters
+        .replace(/[^a-zA-Z\s]/g, '')                
         .trim()
         .replace(/\s+/g, ' ')
         .replace(/[,\s]+$/, '')
@@ -179,14 +229,13 @@ function formatText(text) {
         .split(' ')
         .filter(word => word.length > 0)
         .map((word, index) => {
-            if (word === word.toUpperCase()) return word; // Preserve acronyms
+            if (word === word.toUpperCase()) return word; 
             const lower = word.toLowerCase();
             if (lowercaseWords.includes(lower) && index !== 0) return lower;
             return lower.charAt(0).toUpperCase() + lower.slice(1);
         })
         .join(' ');
 }
-
 
 function checkAutomationEnabled(fieldName, callback) {
     frappe.call({

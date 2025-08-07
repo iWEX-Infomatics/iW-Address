@@ -9,6 +9,16 @@ frappe.ui.form.on('Address', {
             frm.set_value('custom_automate', 1);
         }
 
+        // Initialize original values once onload for autocorrect tracking
+        if (!frm._original_values) {
+            frm._original_values = {};
+            frm.meta.fields.forEach(field => {
+                if (["Data", "Small Text", "Text", "Long Text", "Text Editor"].includes(field.fieldtype)) {
+                    frm._original_values[field.fieldname] = frm.doc[field.fieldname];
+                }
+            });
+        }
+
         check_automation_enabled(frm, () => {
             frm.trigger('set_address_title');
         });
@@ -78,10 +88,58 @@ frappe.ui.form.on('Address', {
         });
     },
 
+    validate(frm) {
+        // Autocorrect change detection & prompt
+        let changes = [];
+        frm.meta.fields.forEach(field => {
+            if (["Data", "Small Text", "Text", "Long Text", "Text Editor"].includes(field.fieldtype)) {
+                const old_val = frm._original_values[field.fieldname];
+                const new_val = frm.doc[field.fieldname];
+
+                if (old_val && new_val && old_val !== new_val) {
+                    const old_words = old_val.split(/\s+/);
+                    const new_words = new_val.split(/\s+/);
+
+                    old_words.forEach((word, idx) => {
+                        if (new_words[idx] && word !== new_words[idx]) {
+                            changes.push({
+                                original: word,
+                                corrected: new_words[idx]
+                            });
+                        }
+                    });
+                }
+            }
+        });
+
+        if (changes.length > 0) {
+            const change = changes[0]; // show only first correction
+            frappe.confirm(
+                `You corrected "<b>${change.original}</b>" to "<b>${change.corrected}</b>".<br><br>Do you want to add it to your Private Dictionary?`,
+                () => {
+                    frappe.call({
+                        method: "validation.validation.doctype.private_dictionary.private_dictionary.add_to_dictionary",
+                        args: {
+                            original: change.original,
+                            corrected: change.corrected
+                        },
+                        callback: () => {
+                            frappe.show_alert("Word added to Private Dictionary!");
+                            frm.reload_doc();
+                        }
+                    });
+                },
+                () => {
+                    frappe.show_alert("Skipped adding to dictionary.");
+                }
+            );
+        }
+    },
+
     before_save(frm) {
         // Clear all pending timeouts before save
         Object.values(debounceTimeouts).forEach(timeout => clearTimeout(timeout));
-        
+
         // Clean up trailing commas and spaces before save
         ['city', 'address_line1', 'address_title', 'custom_post_office', 'custom_taluk', 'state'].forEach(fieldname => {
             const value = frm.doc[fieldname];
@@ -108,39 +166,39 @@ frappe.ui.form.on('Address', {
 
 function handle_address_field(frm, fieldname, is_address_line1 = false) {
     if (!frm.doc.custom_automate) return;
-    
+
     const currentValue = frm.doc[fieldname] || '';
-    
+
     check_automation_enabled(frm, (is_enabled) => {
         if (is_enabled) {
             // Real-time formatting for 4+ character words
             const realTimeFormatted = format_text_realtime(currentValue, is_address_line1);
-            
+
             if (currentValue !== realTimeFormatted) {
                 frm.set_value(fieldname, realTimeFormatted);
                 return;
             }
         }
     });
-    
+
     // Clear any previous timeout set for this field
     if (debounceTimeouts[fieldname]) {
         clearTimeout(debounceTimeouts[fieldname]);
     }
-    
+
     // Set a new timeout for full formatting after typing has paused
     debounceTimeouts[fieldname] = setTimeout(() => {
         check_automation_enabled(frm, (is_enabled) => {
             if (is_enabled) {
                 const valueToFormat = frm.doc[fieldname] || '';
-                
+
                 // Skip if value hasn't changed since last processing
                 if (lastProcessedValues[fieldname] === valueToFormat) {
                     return;
                 }
-                
+
                 const formatted = format_text(valueToFormat, is_address_line1);
-                
+
                 // Only update if formatting actually changed something
                 if (valueToFormat !== formatted) {
                     lastProcessedValues[fieldname] = formatted;
@@ -183,7 +241,6 @@ function format_text_realtime(text, is_address_line1 = false) {
         .join(' ');
 }
 
-
 function format_text(text, is_address_line1 = false) {
     if (!text) return '';
 
@@ -218,7 +275,6 @@ function format_text(text, is_address_line1 = false) {
         })
         .join(' ');
 }
-
 
 function check_automation_enabled(frm, callback) {
     frappe.call({

@@ -3,13 +3,78 @@ frappe.ui.form.on('Contact', {
         if (frm.is_new()) {
             frm.set_value('custom_automate', 1);
         }
+
+        // Capture original values for autocorrect tracking
+        if (!frm._original_values) {
+            frm._original_values = {};
+            frm.meta.fields.forEach(field => {
+                if (["Data", "Small Text", "Text", "Long Text", "Text Editor"].includes(field.fieldtype)) {
+                    frm._original_values[field.fieldname] = frm.doc[field.fieldname];
+                }
+            });
+        }
+
         check_automation_enabled('enable_contact_automation', (is_enabled) => {
             console.log("Automation enabled:", is_enabled);
         });
     },
+
     first_name: (frm) => handle_name_field(frm, 'first_name'),
     middle_name: (frm) => handle_name_field(frm, 'middle_name'),
     last_name: (frm) => handle_name_field(frm, 'last_name'),
+
+    validate(frm) {
+        // Detect manual corrections and prompt to add to private dictionary
+        let changes = [];
+
+        frm.meta.fields.forEach(field => {
+            if (["Data", "Small Text", "Text", "Long Text", "Text Editor"].includes(field.fieldtype)) {
+                const old_val = frm._original_values[field.fieldname];
+                const new_val = frm.doc[field.fieldname];
+
+                if (old_val && new_val && old_val !== new_val) {
+                    const old_words = old_val.split(/\s+/);
+                    const new_words = new_val.split(/\s+/);
+
+                    old_words.forEach((word, idx) => {
+                        if (new_words[idx] && word !== new_words[idx]) {
+                            changes.push({
+                                original: word,
+                                corrected: new_words[idx]
+                            });
+                        }
+                    });
+                }
+            }
+        });
+
+        if (changes.length > 0) {
+            const change = changes[0]; // Prompt only for the first detected correction
+
+            frappe.confirm(
+                `You corrected "<b>${change.original}</b>" to "<b>${change.corrected}</b>".<br><br>Do you want to add it to your Private Dictionary?`,
+                () => {
+                    // YES
+                    frappe.call({
+                        method: "validation.validation.doctype.private_dictionary.private_dictionary.add_to_dictionary",
+                        args: {
+                            original: change.original,
+                            corrected: change.corrected
+                        },
+                        callback: () => {
+                            frappe.show_alert("Word added to Private Dictionary!");
+                            frm.reload_doc();
+                        }
+                    });
+                },
+                () => {
+                    // NO
+                    frappe.show_alert("Skipped adding to dictionary.");
+                }
+            );
+        }
+    },
+
     before_save(frm) {
         // Clear all pending timeouts before save
         Object.values(debounceTimeouts).forEach(timeout => clearTimeout(timeout));
@@ -24,7 +89,7 @@ frappe.ui.form.on('Contact', {
                 }
             }
         });
-        
+
         frm.set_value('custom_automate', 0);
     }
 });
@@ -130,37 +195,6 @@ function format_name(name) {
             return lowercaseWords.includes(lower)
                 ? lower
                 : lower.charAt(0).toUpperCase() + lower.slice(1);
-        })
-        .join(' ');
-}
-
-function format_name(name) {
-    if (!name) return '';
-    
-    // Don't format if user is still typing (ends with space)
-    if (name.endsWith(' ')) {
-        return name;
-    }
-    
-    const lowercaseWords = [
-        'a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to',
-        'from', 'by', 'in', 'of', 'with'
-    ];
-    
-    return name
-        .replace(/[^a-zA-Z\s]/g, '') // Remove special characters
-        .trim() // Remove leading/trailing spaces
-        .replace(/\s+/g, ' ') // Replace multiple spaces with single space
-        .replace(/[,\s]+$/, '') // Remove trailing commas and spaces
-        .replace(/\(/g, ' (') // Add space before opening parenthesis
-        .split(' ')
-        .filter(word => word.length > 0) // Remove empty words
-        .map(word => {
-            if (word === word.toUpperCase()) return word; // Keep all caps words as they are
-            const lower = word.toLowerCase();
-            if (lowercaseWords.includes(lower)) return lower; // Keep small words lowercase
-            if (word.length >= 4) return lower.charAt(0).toUpperCase() + lower.slice(1); // Capitalize first letter of long words
-            return lower; // Keep short words lowercase
         })
         .join(' ');
 }

@@ -34,7 +34,8 @@ override_whitelisted_methods = {
 
 # include js, css files in header of desk.html
 app_include_css = "/assets/validation/css/custom.css"
-# app_include_js = "/assets/validation/js/address.js"
+app_include_js = "/assets/validation/js/global_autocorrect.js"
+
 
 # include js, css files in header of web template
 # web_include_css = "/assets/validation/css/validation.css"
@@ -69,8 +70,8 @@ doctype_js = {
     "Bank Account" : "public/js/bank_account.js",
     "Cleanup Settings": "public/js/cleanup_settings.js",
     "Automate Default Values": "validation/validation/doctype/automate_default_values/automate_default_values.js",
-    "Party Default Values": "validation/validation/doctype/automate_default_values/automate_default_values.js",
-}
+    "Party Default Values": "validation/validation/doctype/automate_default_values/automate_default_values.js"
+    }
 
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
@@ -283,6 +284,7 @@ doc_events = {
     "*": {
         "validate": "validation.validation.doctype.private_dictionary.private_dictionary.global_validate_replacement"
     }
+
 }
 
 fixtures = [    

@@ -34,6 +34,9 @@ const FormHandler = {
                     } else {
                         this.lastValues[fieldname] = valueToFormat;
                     }
+
+                    // Check manual correction after formatting
+                    checkForManualCorrection(frm, fieldname);
                 }
             });
         }, 300);
@@ -108,9 +111,15 @@ frappe.ui.form.on('Terms and Conditions', {
             console.log("New form - setting custom_automate to 1");
             frm.set_value('custom_automate', 1);
         }
+        frm._original_values = {};
     },
 
-    // Using debounced FormHandler for title
+    refresh(frm) {
+        // Store original values to detect manual edits
+        frm._original_values['title'] = frm.doc.title;
+        frm._original_values['terms'] = frm.doc.terms;
+    },
+
     title(frm) {
         FormHandler.handle(
             frm,
@@ -121,7 +130,6 @@ frappe.ui.form.on('Terms and Conditions', {
         );
     },
 
-    // Using debounced FormHandler for terms
     terms(frm) {
         FormHandler.handle(
             frm,
@@ -133,7 +141,6 @@ frappe.ui.form.on('Terms and Conditions', {
     },
 
     before_save(frm) {
-        // Clean up any trailing spaces/commas before saving
         FormHandler.cleanup(frm, ['title', 'terms']);
 
         if (frm.doc.custom_automate === 1) {
@@ -142,6 +149,46 @@ frappe.ui.form.on('Terms and Conditions', {
         }
     }
 });
+
+// Manual correction detection and popup for Private Dictionary
+function checkForManualCorrection(frm, fieldname) {
+    if (!frm._original_values) return;
+
+    const oldVal = frm._original_values[fieldname] || '';
+    const newVal = frm.doc[fieldname] || '';
+
+    if (oldVal && newVal && oldVal !== newVal) {
+        const oldWords = oldVal.split(/\s+/);
+        const newWords = newVal.split(/\s+/);
+
+        for (let i = 0; i < oldWords.length; i++) {
+            if (newWords[i] && oldWords[i] !== newWords[i]) {
+                const original = oldWords[i];
+                const corrected = newWords[i];
+
+                frappe.confirm(
+                    `You corrected "<b>${original}</b>" to "<b>${corrected}</b>".<br><br>Do you want to add it to your Private Dictionary?`,
+                    () => {
+                        frappe.call({
+                            method: "validation.validation.doctype.private_dictionary.private_dictionary.add_to_dictionary",
+                            args: { original, corrected },
+                            callback: () => {
+                                frappe.show_alert("Word added to Private Dictionary!");
+                                frm._original_values[fieldname] = newVal; // update to avoid repeat popup
+                            }
+                        });
+                    },
+                    () => {
+                        frappe.show_alert("Skipped adding to dictionary.");
+                        frm._original_values[fieldname] = newVal; // update to avoid repeat popup
+                    }
+                );
+
+                break; // only one popup per change
+            }
+        }
+    }
+}
 
 // ========== Legacy Functions (kept for compatibility) ==========
 

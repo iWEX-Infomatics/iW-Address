@@ -64,7 +64,6 @@ const FormHandler = {
     }
 };
 
-
 const TextFormatter = {
     lowercaseWords: ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'],
     
@@ -102,13 +101,68 @@ const TextFormatter = {
     }
 };
 
-
 frappe.ui.form.on('Bank Account', {
     onload(frm) {
         if (frm.is_new()) frm.set_value('custom_automate', 1);
+
+        // Capture original values on load for autocorrect tracking
+        if (!frm._original_values) {
+            frm._original_values = {};
+            frm.meta.fields.forEach(field => {
+                if (["Data", "Small Text", "Text", "Long Text", "Text Editor"].includes(field.fieldtype)) {
+                    frm._original_values[field.fieldname] = frm.doc[field.fieldname];
+                }
+            });
+        }
     },
 
     account_name: (frm) => FormHandler.handle(frm, 'account_name', 'enable_bank_automation', TextFormatter.full.bind(TextFormatter), TextFormatter.realTime.bind(TextFormatter)),
+
+    validate(frm) {
+        // Autocorrect change detection and prompt
+        let changes = [];
+        frm.meta.fields.forEach(field => {
+            if (["Data", "Small Text", "Text", "Long Text", "Text Editor"].includes(field.fieldtype)) {
+                const old_val = frm._original_values[field.fieldname];
+                const new_val = frm.doc[field.fieldname];
+                if (old_val && new_val && old_val !== new_val) {
+                    const old_words = old_val.split(/\s+/);
+                    const new_words = new_val.split(/\s+/);
+                    old_words.forEach((word, idx) => {
+                        if (new_words[idx] && word !== new_words[idx]) {
+                            changes.push({
+                                original: word,
+                                corrected: new_words[idx]
+                            });
+                        }
+                    });
+                }
+            }
+        });
+
+        if (changes.length > 0) {
+            const change = changes[0]; // show only first correction
+            frappe.confirm(
+                `You corrected "<b>${change.original}</b>" to "<b>${change.corrected}</b>".<br><br>Do you want to add it to your Private Dictionary?`,
+                () => {
+                    frappe.call({
+                        method: "validation.validation.doctype.private_dictionary.private_dictionary.add_to_dictionary",
+                        args: {
+                            original: change.original,
+                            corrected: change.corrected
+                        },
+                        callback: () => {
+                            frappe.show_alert("Word added to Private Dictionary!");
+                            frm.reload_doc();
+                        }
+                    });
+                },
+                () => {
+                    frappe.show_alert("Skipped adding to dictionary.");
+                }
+            );
+        }
+    },
 
     before_save(frm) {
         FormHandler.cleanup(frm, ['account_name']);

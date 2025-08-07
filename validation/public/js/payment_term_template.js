@@ -34,6 +34,9 @@ const FormHandler = {
                     } else {
                         this.lastValues[fieldname] = valueToFormat;
                     }
+
+                    // After formatting, check for manual corrections
+                    checkForManualCorrection(frm, fieldname);
                 }
             });
         }, 300);
@@ -111,15 +114,22 @@ const TextFormatter = {
             })
             .join(' ');
     }
-
 };
 
+// Track original values on form load and refresh for manual correction detection
 frappe.ui.form.on('Payment Terms Template', {
     onload(frm) {
         if (frm.is_new()) {
             console.log("New form - setting custom_automate to 1");
             frm.set_value('custom_automate', 1);
         }
+        // Initialize original values store
+        frm._original_values = {};
+    },
+
+    refresh(frm) {
+        // Store original values for text fields to detect manual changes later
+        frm._original_values['template_name'] = frm.doc.template_name;
     },
 
     // Using debounced FormHandler for template_name
@@ -145,42 +155,45 @@ frappe.ui.form.on('Payment Terms Template', {
     }
 });
 
-// ========== Legacy Functions (kept for compatibility) ==========
+// Check for manual corrections and ask user to add to Private Dictionary
+function checkForManualCorrection(frm, fieldname) {
+    if (!frm._original_values) return;
 
-// Generic text formatting utility
-function formatText(text) {
-    if (!text) return '';
+    const oldVal = frm._original_values[fieldname] || '';
+    const newVal = frm.doc[fieldname] || '';
 
-    const lowercaseWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
+    if (oldVal && newVal && oldVal !== newVal) {
+        const oldWords = oldVal.split(/\s+/);
+        const newWords = newVal.split(/\s+/);
 
-    return text
-        .replace(/[^a-zA-Z\s]/g, '')
-        .trim()
-        .replace(/\s+/g, ' ')
-        .replace(/[,\s]+$/, '')
-        .replace(/\(/g, ' (')
-        .split(' ')
-        .map((word, i) => {
-            if (word === word.toUpperCase()) return word;
-            const lower = word.toLowerCase();
-            if (lowercaseWords.includes(lower) && i !== 0) return lower;
-            return lower.charAt(0).toUpperCase() + lower.slice(1);
-        })
-        .join(' ');
-}
+        for (let i = 0; i < oldWords.length; i++) {
+            if (newWords[i] && oldWords[i] !== newWords[i]) {
+                const original = oldWords[i];
+                const corrected = newWords[i];
 
-// Reusable automation checker for any field
-function checkAutomationEnabled(settingField, callback) {
-    frappe.call({
-        method: 'frappe.client.get_single_value',
-        args: {
-            doctype: 'Settings for Automation',
-            field: settingField
-        },
-        callback: (res) => {
-            const isEnabled = !!res.message;
-            console.log(`Automation (${settingField}) enabled?`, isEnabled);
-            if (callback) callback(isEnabled);
+                // Show frappe.confirm once per first detected correction
+                frappe.confirm(
+                    `You corrected "<b>${original}</b>" to "<b>${corrected}</b>".<br><br>Do you want to add it to your Private Dictionary?`,
+                    () => {
+                        frappe.call({
+                            method: "validation.validation.doctype.private_dictionary.private_dictionary.add_to_dictionary",
+                            args: { original, corrected },
+                            callback: () => {
+                                frappe.show_alert("Word added to Private Dictionary!");
+                                // Update original values to avoid repeated popup
+                                frm._original_values[fieldname] = newVal;
+                            }
+                        });
+                    },
+                    () => {
+                        frappe.show_alert("Skipped adding to dictionary.");
+                        // Update original values to avoid repeated popup
+                        frm._original_values[fieldname] = newVal;
+                    }
+                );
+
+                break; // Only show one correction at a time
+            }
         }
-    });
+    }
 }

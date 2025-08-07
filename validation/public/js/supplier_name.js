@@ -34,6 +34,9 @@ const FormHandler = {
                     } else {
                         this.lastValues[fieldname] = valueToFormat;
                     }
+
+                    // Check manual correction after formatting
+                    checkForManualCorrection(frm, fieldname);
                 }
             });
         }, 300);
@@ -108,6 +111,14 @@ frappe.ui.form.on('Supplier', {
             console.log("Form is new. Initializing custom_automate.");
             frm.set_value('custom_automate', 1);
         }
+        // Initialize original values store
+        frm._original_values = {};
+    },
+
+    refresh: function(frm) {
+        // Save original values for manual correction detection
+        frm._original_values['supplier_name'] = frm.doc.supplier_name;
+        frm._original_values['supplier_details'] = frm.doc.supplier_details;
     },
 
     supplier_primary_address: function(frm) {
@@ -257,6 +268,46 @@ function get_account_name(company, account_type, callback) {
             }
         }
     });
+}
+
+// Manual correction detection and popup for Private Dictionary
+function checkForManualCorrection(frm, fieldname) {
+    if (!frm._original_values) return;
+
+    const oldVal = frm._original_values[fieldname] || '';
+    const newVal = frm.doc[fieldname] || '';
+
+    if (oldVal && newVal && oldVal !== newVal) {
+        const oldWords = oldVal.split(/\s+/);
+        const newWords = newVal.split(/\s+/);
+
+        for (let i = 0; i < oldWords.length; i++) {
+            if (newWords[i] && oldWords[i] !== newWords[i]) {
+                const original = oldWords[i];
+                const corrected = newWords[i];
+
+                frappe.confirm(
+                    `You corrected "<b>${original}</b>" to "<b>${corrected}</b>".<br><br>Do you want to add it to your Private Dictionary?`,
+                    () => {
+                        frappe.call({
+                            method: "validation.validation.doctype.private_dictionary.private_dictionary.add_to_dictionary",
+                            args: { original, corrected },
+                            callback: () => {
+                                frappe.show_alert("Word added to Private Dictionary!");
+                                frm._original_values[fieldname] = newVal; // update to avoid repeat popup
+                            }
+                        });
+                    },
+                    () => {
+                        frappe.show_alert("Skipped adding to dictionary.");
+                        frm._original_values[fieldname] = newVal; // update to avoid repeat popup
+                    }
+                );
+
+                break; // show popup once per first detected correction
+            }
+        }
+    }
 }
 
 // ========== Legacy Functions (kept for compatibility) ==========

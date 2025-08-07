@@ -1,3 +1,114 @@
 .help-box {
     color: #6c757d !important;
 }
+
+
+
+/* Add this CSS to your app's public/css folder */
+
+.dictionary-popup {
+    padding: 15px;
+}
+
+.dictionary-popup h4 {
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.dictionary-popup p {
+    margin-bottom: 15px;
+    color: #666;
+}
+
+.corrections-list {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.correction-item {
+    margin-bottom: 15px;
+    padding: 10px;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    background-color: #fafafa;
+}
+
+.correction-item:last-child {
+    margin-bottom: 0;
+}
+
+.correction-item label {
+    font-weight: 600;
+    margin-bottom: 5px;
+    display: block;
+}
+
+.correction-item .original-word {
+    background-color: #fff3cd;
+    border-color: #ffeaa7;
+}
+
+.correction-item .corrected-word {
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+}
+
+.correction-item .include-correction {
+    margin-top: 5px;
+    transform: scale(1.2);
+}
+
+.dictionary-actions {
+    text-align: right;
+    border-top: 1px solid #e0e0e0;
+    padding-top: 15px;
+}
+
+.dictionary-actions .btn {
+    margin-left: 10px;
+}
+
+.dictionary-actions .btn-confirm {
+    background-color: #28a745;
+    border-color: #28a745;
+}
+
+.dictionary-actions .btn-confirm:hover {
+    background-color: #218838;
+    border-color: #1e7e34;
+}
+
+/* Alert styling for dictionary notifications */
+.alert.alert-success {
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+    color: #155724;
+}
+
+.alert.alert-danger {
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    color: #721c24;
+}
+
+/* Loading state */
+.dictionary-popup .loading {
+    text-align: center;
+    padding: 20px;
+}
+
+.dictionary-popup .loading::after {
+    content: '';
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

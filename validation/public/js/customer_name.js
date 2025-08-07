@@ -2,12 +2,12 @@
 const FormHandler = {
     timeouts: {},
     lastValues: {},
-    
+
     handle(frm, fieldname, automationField, formatFunction, realTimeFunction) {
         if (!frm.doc.custom_automate) return;
-        
+
         const currentValue = frm.doc[fieldname] || '';
-        
+
         // Real-time formatting check
         this.checkAutomation(automationField, (enabled) => {
             if (enabled) {
@@ -18,7 +18,7 @@ const FormHandler = {
                 }
             }
         });
-        
+
         // Debounced full formatting
         clearTimeout(this.timeouts[fieldname]);
         this.timeouts[fieldname] = setTimeout(() => {
@@ -26,7 +26,7 @@ const FormHandler = {
                 if (enabled) {
                     const valueToFormat = frm.doc[fieldname] || '';
                     if (this.lastValues[fieldname] === valueToFormat) return;
-                    
+
                     const formatted = formatFunction(valueToFormat);
                     if (valueToFormat !== formatted) {
                         this.lastValues[fieldname] = formatted;
@@ -38,11 +38,11 @@ const FormHandler = {
             });
         }, 300);
     },
-    
+
     cleanup(frm, fields) {
         Object.values(this.timeouts).forEach(clearTimeout);
         this.timeouts = {};
-        
+
         fields.forEach(fieldname => {
             const value = frm.doc[fieldname];
             if (value) {
@@ -51,7 +51,7 @@ const FormHandler = {
             }
         });
     },
-    
+
     checkAutomation(field, callback) {
         frappe.call({
             method: 'frappe.client.get_single_value',
@@ -67,18 +67,18 @@ const FormHandler = {
 // Text formatting utilities
 const TextFormatter = {
     lowercaseWords: ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'],
-    
+
     realTime(text, allowNumbers = false) {
         if (!text || text.endsWith(' ')) return text;
-        
+
         return text.split(' ').map(word => {
             if (!word || word === word.toUpperCase()) return word;
             const lower = word.toLowerCase();
-            return this.lowercaseWords.includes(lower) ? lower : 
-                   word.length >= 4 ? lower.charAt(0).toUpperCase() + lower.slice(1) : lower;
+            return this.lowercaseWords.includes(lower) ? lower :
+                word.length >= 4 ? lower.charAt(0).toUpperCase() + lower.slice(1) : lower;
         }).join(' ');
     },
-    
+
     full(text, allowNumbers = false) {
         if (!text || text.endsWith(' ')) return text;
 
@@ -101,7 +101,6 @@ const TextFormatter = {
             })
             .join(' ');
     }
-
 };
 
 frappe.ui.form.on('Customer', {
@@ -110,6 +109,71 @@ frappe.ui.form.on('Customer', {
             console.log("Form is new. Initializing custom_automate.");
             frm.set_value('custom_automate', 1);
         }
+
+        // Initialize original values only once
+        if (!frm._original_values) {
+            frm._original_values = {};
+            frm.meta.fields.forEach(field => {
+                if (["Data", "Small Text", "Text", "Long Text", "Text Editor"].includes(field.fieldtype)) {
+                    frm._original_values[field.fieldname] = frm.doc[field.fieldname];
+                }
+            });
+        }
+    },
+
+    refresh(frm) {
+        console.log("******************trrrrrrrr** Global Autocorrect Loaded ********************");
+        // NOTE: Don't reset _original_values here; keep for validation comparison
+    },
+
+    validate(frm) {
+        // Autocorrect change detection & prompt
+        let changes = [];
+        frm.meta.fields.forEach(field => {
+            if (["Data", "Small Text", "Text", "Long Text", "Text Editor"].includes(field.fieldtype)) {
+                const old_val = frm._original_values[field.fieldname];
+                const new_val = frm.doc[field.fieldname];
+
+                if (old_val && new_val && old_val !== new_val) {
+                    const old_words = old_val.split(/\s+/);
+                    const new_words = new_val.split(/\s+/);
+
+                    old_words.forEach((word, idx) => {
+                        if (new_words[idx] && word !== new_words[idx]) {
+                            changes.push({
+                                original: word,
+                                corrected: new_words[idx]
+                            });
+                        }
+                    });
+                }
+            }
+        });
+
+        if (changes.length > 0) {
+            const change = changes[0]; // only first correction for now
+            frappe.confirm(
+                `You corrected "<b>${change.original}</b>" to "<b>${change.corrected}</b>".<br><br>Do you want to add it to your Private Dictionary?`,
+                () => {
+                    frappe.call({
+                        method: "validation.validation.doctype.private_dictionary.private_dictionary.add_to_dictionary",
+                        args: {
+                            original: change.original,
+                            corrected: change.corrected
+                        },
+                        callback: () => {
+                            frappe.show_alert("Word added to Private Dictionary!");
+                            frm.reload_doc();
+                        }
+                    });
+                },
+                () => {
+                    frappe.show_alert("Skipped adding to dictionary.");
+                }
+            );
+        }
+
+        // Existing before_save cleanup & disable automation handled in before_save below
     },
 
     customer_primary_address: function(frm) {
@@ -201,9 +265,9 @@ frappe.ui.form.on('Customer', {
     // Using debounced FormHandler for customer_name
     customer_name: function(frm) {
         FormHandler.handle(
-            frm, 
-            'customer_name', 
-            'enable_customer_automation', 
+            frm,
+            'customer_name',
+            'enable_customer_automation',
             (text) => TextFormatter.full(text, true), // allowNumbers = true
             (text) => TextFormatter.realTime(text, true)
         );
@@ -212,9 +276,9 @@ frappe.ui.form.on('Customer', {
     // Using debounced FormHandler for customer_details
     customer_details: function(frm) {
         FormHandler.handle(
-            frm, 
-            'customer_details', 
-            'enable_customer_automation', 
+            frm,
+            'customer_details',
+            'enable_customer_automation',
             (text) => TextFormatter.full(text, false), // allowNumbers = false
             (text) => TextFormatter.realTime(text, false)
         );
@@ -223,7 +287,7 @@ frappe.ui.form.on('Customer', {
     before_save: function(frm) {
         // Clean up any trailing spaces/commas before saving
         FormHandler.cleanup(frm, ['customer_name', 'customer_details']);
-        
+
         if (frm.doc.custom_automate) {
             console.log("Before Save: Disabling custom_automate");
             frm.set_value('custom_automate', 0);

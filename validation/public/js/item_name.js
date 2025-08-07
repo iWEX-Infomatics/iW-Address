@@ -2,12 +2,12 @@
 const FormHandler = {
     timeouts: {},
     lastValues: {},
-    
+
     handle(frm, fieldname, automationField, formatFunction, realTimeFunction) {
         if (!frm.doc.custom_automate) return;
-        
+
         const currentValue = frm.doc[fieldname] || '';
-        
+
         // Real-time formatting check
         this.checkAutomation(automationField, (enabled) => {
             if (enabled) {
@@ -18,7 +18,7 @@ const FormHandler = {
                 }
             }
         });
-        
+
         // Debounced full formatting
         clearTimeout(this.timeouts[fieldname]);
         this.timeouts[fieldname] = setTimeout(() => {
@@ -26,7 +26,7 @@ const FormHandler = {
                 if (enabled) {
                     const valueToFormat = frm.doc[fieldname] || '';
                     if (this.lastValues[fieldname] === valueToFormat) return;
-                    
+
                     const formatted = formatFunction(valueToFormat);
                     if (valueToFormat !== formatted) {
                         this.lastValues[fieldname] = formatted;
@@ -38,13 +38,13 @@ const FormHandler = {
             });
         }, 300);
     },
-    
+
     // Special handler for Item automation with complex settings
     handleItemField(frm, fieldname, settingKey, formatFunction, realTimeFunction) {
         if (!frm.doc.custom_automate) return;
-        
+
         const currentValue = frm.doc[fieldname] || '';
-        
+
         // Real-time formatting
         this.getItemAutomationSettings((settings) => {
             const shouldFormat = settings.enable_item_automation && !settings[settingKey];
@@ -56,7 +56,7 @@ const FormHandler = {
                 }
             }
         });
-        
+
         // Debounced full formatting
         clearTimeout(this.timeouts[fieldname]);
         this.timeouts[fieldname] = setTimeout(() => {
@@ -65,7 +65,7 @@ const FormHandler = {
                 if (shouldFormat) {
                     const valueToFormat = frm.doc[fieldname] || '';
                     if (this.lastValues[fieldname] === valueToFormat) return;
-                    
+
                     const formatted = formatFunction(valueToFormat);
                     if (valueToFormat !== formatted) {
                         this.lastValues[fieldname] = formatted;
@@ -77,11 +77,11 @@ const FormHandler = {
             });
         }, 300);
     },
-    
+
     cleanup(frm, fields) {
         Object.values(this.timeouts).forEach(clearTimeout);
         this.timeouts = {};
-        
+
         fields.forEach(fieldname => {
             const value = frm.doc[fieldname];
             if (value) {
@@ -90,7 +90,7 @@ const FormHandler = {
             }
         });
     },
-    
+
     checkAutomation(field, callback) {
         frappe.call({
             method: 'frappe.client.get_single_value',
@@ -101,7 +101,7 @@ const FormHandler = {
             callback: (res) => callback(!!res.message)
         });
     },
-    
+
     getItemAutomationSettings(callback) {
         frappe.call({
             method: 'frappe.client.get',
@@ -124,7 +124,7 @@ const FormHandler = {
             }
         });
     },
-    
+
     getItemAutomationSettingsIndividual(callback) {
         const settings = {};
         const fields = ['enable_item_automation', 'item_code_automation', 'item_name_automation', 'description_automation'];
@@ -152,13 +152,13 @@ const FormHandler = {
 // Text formatting utilities for Item
 const ItemTextFormatter = {
     lowercaseWords: ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'],
-    
+
     realTime(text, isItemName = false) {
         if (!text || text.endsWith(' ')) return text;
-        
+
         return text.split(' ').map((word, index) => {
             if (!word) return word;
-            
+
             // For non-item-name formatting, preserve all-uppercase words
             if (!isItemName && word === word.toUpperCase()) {
                 return word;
@@ -179,46 +179,196 @@ const ItemTextFormatter = {
             return isItemName ? word : lowerWord;
         }).join(' ');
     },
-    
-full(text, isItemName = false) {
-    if (!text || text.endsWith(' ')) return text;
 
-    // Remove unwanted characters (keep underscore for item_name)
-    let formattedText = isItemName ? 
-        text.replace(/[^a-zA-Z0-9\s\-_]/g, '') : 
-        text.replace(/[^a-zA-Z0-9\s\-]/g, '');
+    full(text, isItemName = false) {
+        if (!text || text.endsWith(' ')) return text;
 
-    // Clean up spaces and punctuation
-    formattedText = formattedText.trim().replace(/\s+/g, ' ');
-    formattedText = formattedText.replace(/[,\s]+$/, '');
-    formattedText = formattedText.replace(/\(/g, ' (');
+        // Remove unwanted characters (keep underscore for item_name)
+        let formattedText = isItemName ? 
+            text.replace(/[^a-zA-Z0-9\s\-_]/g, '') : 
+            text.replace(/[^a-zA-Z0-9\s\-]/g, '');
 
-    // Apply capitalization rules
-    return formattedText
-        .split(' ')
-        .filter(word => word.length > 0)
-        .map((word, index) => {
-            // For non-item-name formatting, preserve all-uppercase words
-            if (!isItemName && word === word.toUpperCase()) {
-                return word;
-            }
+        // Clean up spaces and punctuation
+        formattedText = formattedText.trim().replace(/\s+/g, ' ');
+        formattedText = formattedText.replace(/[,\s]+$/, '');
+        formattedText = formattedText.replace(/\(/g, ' (');
 
-            const lowerWord = word.toLowerCase();
+        // Apply capitalization rules
+        return formattedText
+            .split(' ')
+            .filter(word => word.length > 0)
+            .map((word, index) => {
+                // For non-item-name formatting, preserve all-uppercase words
+                if (!isItemName && word === word.toUpperCase()) {
+                    return word;
+                }
 
-            // Keep small words lowercase (except first word for item names)
-            if (this.lowercaseWords.includes(lowerWord) && !(isItemName && index === 0)) {
-                return lowerWord;
-            }
+                const lowerWord = word.toLowerCase();
 
-            // Capitalize all words (no length condition)
-            return word.charAt(0).toUpperCase() + (isItemName ? word.slice(1) : lowerWord.slice(1));
-        })
-        .join(' ');
-}
+                // Keep small words lowercase (except first word for item names)
+                if (this.lowercaseWords.includes(lowerWord) && !(isItemName && index === 0)) {
+                    return lowerWord;
+                }
 
+                // Capitalize all words (no length condition)
+                return word.charAt(0).toUpperCase() + (isItemName ? word.slice(1) : lowerWord.slice(1));
+            })
+            .join(' ');
+    }
 };
 
-// Helper functions for tax handling
+// Variables to store original values for manual correction detection
+let original_values = {};
+
+// Main form events
+frappe.ui.form.on('Item', {
+    onload(frm) {
+        if (frm.is_new()) {
+            console.log("Form is new. Initializing custom_automate to enabled (1).");
+            frm.set_value('custom_automate', 1);
+        }
+        // Store original values on load
+        original_values = {};
+        ['item_code', 'item_name', 'description'].forEach(field => {
+            original_values[field] = frm.doc[field] || '';
+        });
+    },
+
+    refresh(frm) {
+        // Update original values on refresh too
+        ['item_code', 'item_name', 'description'].forEach(field => {
+            original_values[field] = frm.doc[field] || '';
+        });
+    },
+
+    item_code(frm) {
+        FormHandler.handleItemField(
+            frm, 
+            'item_code', 
+            'item_code_automation',
+            (text) => ItemTextFormatter.full(text, false),
+            (text) => ItemTextFormatter.realTime(text, false)
+        );
+        checkForManualCorrection(frm, 'item_code');
+    },
+
+    item_name(frm) {
+        FormHandler.handleItemField(
+            frm, 
+            'item_name', 
+            'item_name_automation',
+            (text) => ItemTextFormatter.full(text, true),
+            (text) => ItemTextFormatter.realTime(text, true)
+        );
+
+        setTimeout(() => {
+            if (frm.doc.item_name) {
+                frm.set_value('description', frm.doc.item_name);
+            }
+        }, 350);
+        checkForManualCorrection(frm, 'item_name');
+    },
+
+    description(frm) {
+        FormHandler.handleItemField(
+            frm, 
+            'description', 
+            'description_automation',
+            (text) => ItemTextFormatter.full(text, false),
+            (text) => ItemTextFormatter.realTime(text, false)
+        );
+        checkForManualCorrection(frm, 'description');
+    },
+
+    // Add your other triggers here (item_group, custom_item_tax_percentage, validate, before_save)
+    item_group(frm) {
+        if (frm.doc.item_group === "Services") {
+            frm.set_value("is_stock_item", 0);
+        } else {
+            frm.set_value("is_stock_item", 1);
+        }
+    },
+
+    custom_item_tax_percentage(frm) {
+        if (!frm.doc.custom_automate) {
+            console.log("Tax automation skipped - custom_automate is disabled");
+            return;
+        }
+
+        console.log("custom_item_tax_percentage field changed!");
+        const perc = frm.doc.custom_item_tax_percentage;
+        console.log("Selected Tax Percentage:", perc);
+
+        if (perc === '0%') {
+            clearNonEmptyTaxRows(frm);
+            return;
+        }
+
+        const taxPercentages = ['5%', '12%', '18%', '28%'];
+        if (taxPercentages.includes(perc)) {
+            setupTaxRows(frm, perc);
+        }
+    },
+
+    validate(frm) {
+        if (!frm.doc.custom_automate) {
+            console.log("Validation skipped - custom_automate is disabled");
+            return;
+        }
+
+        console.log("Validating Item Defaults...");
+        frm.refresh_field('item_defaults');
+    },
+
+    before_save(frm) {
+        FormHandler.cleanup(frm, ['item_code', 'item_name', 'description']);
+        if (frm.doc.custom_automate === 1) {
+            console.log("Before Save: Disabling custom_automate to prevent re-processing");
+            frm.set_value('custom_automate', 0);
+        }
+    }
+});
+
+// Manual correction detection and popup for adding to Private Dictionary
+function checkForManualCorrection(frm, fieldname) {
+    const oldVal = original_values[fieldname] || '';
+    const newVal = frm.doc[fieldname] || '';
+
+    if (oldVal && newVal && oldVal !== newVal) {
+        const oldWords = oldVal.split(/\s+/);
+        const newWords = newVal.split(/\s+/);
+
+        for (let i = 0; i < Math.min(oldWords.length, newWords.length); i++) {
+            if (oldWords[i] !== newWords[i]) {
+                const originalWord = oldWords[i];
+                const correctedWord = newWords[i];
+
+                frappe.confirm(
+                    `You changed "<b>${originalWord}</b>" to "<b>${correctedWord}</b>" in <b>${fieldname.replace('_',' ')}</b>.<br><br>Do you want to add this to your Private Dictionary?`,
+                    () => {
+                        frappe.call({
+                            method: "validation.validation.doctype.private_dictionary.private_dictionary.add_to_dictionary",
+                            args: {
+                                original: originalWord,
+                                corrected: correctedWord
+                            },
+                            callback: () => {
+                                frappe.show_alert("Added to Private Dictionary");
+                                original_values[fieldname] = frm.doc[fieldname]; // update to avoid repeat popup
+                            }
+                        });
+                    },
+                    () => {
+                        original_values[fieldname] = frm.doc[fieldname]; // update anyway to avoid repeat popup
+                    }
+                );
+                break;
+            }
+        }
+    }
+}
+
+// Tax helper functions
 function clearNonEmptyTaxRows(frm) {
     const taxTable = frm.doc.taxes || [];
     for (let i = taxTable.length - 1; i >= 0; i--) {
@@ -246,242 +396,4 @@ function setupTaxRows(frm, percentage) {
     });
 
     frm.refresh_field("taxes");
-}
-
-// Main form handler
-frappe.ui.form.on('Item', {
-    onload: function(frm) {
-        if (frm.is_new()) {
-            console.log("Form is new. Initializing custom_automate to enabled (1).");
-            frm.set_value('custom_automate', 1);
-        }
-    },
-
-    // Using debounced FormHandler for item_code
-    item_code: function(frm) {
-        FormHandler.handleItemField(
-            frm, 
-            'item_code', 
-            'item_code_automation',
-            (text) => ItemTextFormatter.full(text, false),
-            (text) => ItemTextFormatter.realTime(text, false)
-        );
-    },
-
-    // Using debounced FormHandler for item_name
-    item_name: function(frm) {
-        FormHandler.handleItemField(
-            frm, 
-            'item_name', 
-            'item_name_automation',
-            (text) => ItemTextFormatter.full(text, true), // isItemName = true
-            (text) => ItemTextFormatter.realTime(text, true)
-        );
-        
-        // Set description after formatting with slight delay
-        setTimeout(() => {
-            if (frm.doc.item_name) {
-                frm.set_value('description', frm.doc.item_name);
-            }
-        }, 350);
-    },
-
-    // Using debounced FormHandler for description
-    description: function(frm) {
-        FormHandler.handleItemField(
-            frm, 
-            'description', 
-            'description_automation',
-            (text) => ItemTextFormatter.full(text, false),
-            (text) => ItemTextFormatter.realTime(text, false)
-        );
-    },
-
-    item_group: function(frm) {
-        if (frm.doc.item_group === "Services") {
-            frm.set_value("is_stock_item", 0);  // Uncheck Maintain Stock
-        } else {
-            frm.set_value("is_stock_item", 1);  // Check Maintain Stock for other groups
-        }
-    },
-
-    custom_item_tax_percentage: function(frm) {
-        // Skip if automation is disabled
-        if (!frm.doc.custom_automate) {
-            console.log("Tax automation skipped - custom_automate is disabled");
-            return;
-        }
-
-        console.log("custom_item_tax_percentage field changed!");
-        const perc = frm.doc.custom_item_tax_percentage;
-        console.log("Selected Tax Percentage:", perc);
-
-        // Handle 0% tax case
-        if (perc === '0%') {
-            console.log("Handling 0% tax...");
-            clearNonEmptyTaxRows(frm);
-            return;
-        }
-
-        // Handle other tax percentages
-        const taxPercentages = ['5%', '12%', '18%', '28%'];
-        if (taxPercentages.includes(perc)) {
-            console.log(`Handling ${perc} tax...`);
-            setupTaxRows(frm, perc);
-        }
-    },
-
-    validate: function(frm) {
-        // Skip validation if automation is disabled
-        if (!frm.doc.custom_automate) {
-            console.log("Validation skipped - custom_automate is disabled");
-            return;
-        }
-
-        console.log("Validating Item Defaults...");
-        
-        const itemDefaultsTable = frm.doc.item_defaults || [];
-
-        // Add your validation logic here if needed
-        /*
-        itemDefaultsTable.forEach((row, index) => {
-            if (!row.default_warehouse) {
-                frappe.throw(__("Row {0}: Default Warehouse is mandatory.", [index + 1]));
-            }
-            if (!row.income_account) {
-                frappe.throw(__("Row {0}: Income Account is mandatory.", [index + 1]));
-            }
-        });
-        */
-
-        frm.refresh_field('item_defaults');
-    },
-
-    before_save: function(frm) {
-        // Clean up any trailing spaces/commas before saving
-        FormHandler.cleanup(frm, ['item_code', 'item_name', 'description']);
-        
-        // Disable automation after first save to prevent repeated processing
-        if (frm.doc.custom_automate === 1) {
-            console.log("Before Save: Disabling custom_automate to prevent re-processing");
-            frm.set_value('custom_automate', 0);
-        }
-    }
-});
-
-// ========== Legacy Functions (kept for compatibility) ==========
-
-// Helper function to get all automation settings in one call
-function getAutomationSettings(callback) {
-    frappe.call({
-        method: 'frappe.client.get',
-        args: {
-            doctype: 'Settings for Automation',
-            name: 'Settings for Automation'
-        },
-        callback: function(response) {
-            if (response.message) {
-                callback({
-                    enable_item_automation: response.message.enable_item_automation || 0,
-                    item_code_automation: response.message.item_code_automation || 0,
-                    item_name_automation: response.message.item_name_automation || 0,
-                    description_automation: response.message.description_automation || 0
-                });
-            } else {
-                console.log("Falling back to individual API calls for automation settings");
-                getAutomationSettingsIndividual(callback);
-            }
-        }
-    });
-}
-
-// Fallback function for individual API calls
-function getAutomationSettingsIndividual(callback) {
-    const settings = {};
-    const fields = ['enable_item_automation', 'item_code_automation', 'item_name_automation', 'description_automation'];
-    let completed = 0;
-
-    fields.forEach(field => {
-        frappe.call({
-            method: 'frappe.client.get_single_value',
-            args: {
-                doctype: 'Settings for Automation',
-                field: field
-            },
-            callback: function(response) {
-                settings[field] = response.message || 0;
-                completed++;
-                if (completed === fields.length) {
-                    callback(settings);
-                }
-            }
-        });
-    });
-}
-
-// Unified formatting function
-function formatText(text, isItemName = false) {
-    if (!text) return '';
-
-    const lowercaseWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
-    
-    // Remove unwanted characters (keep underscore for item_name)
-    let formattedText = isItemName ? 
-        text.replace(/[^a-zA-Z0-9\s\-_]/g, '') : 
-        text.replace(/[^a-zA-Z0-9\s\-]/g, '');
-
-    // Clean up spaces and punctuation
-    formattedText = formattedText.trim().replace(/\s+/g, ' ');
-    formattedText = formattedText.replace(/[,\s]+$/, '');
-    formattedText = formattedText.replace(/\(/g, ' (');
-
-    // Apply capitalization rules
-    formattedText = formattedText.split(' ').map((word, index) => {
-        // For non-item-name formatting, preserve all-uppercase words
-        if (!isItemName && word === word.toUpperCase()) {
-            return word;
-        }
-
-        const lowerWord = word.toLowerCase();
-
-        // Keep small words lowercase (except first word for item names)
-        if (lowercaseWords.includes(lowerWord) && !(isItemName && index === 0)) {
-            return lowerWord;
-        }
-
-        // Capitalize words with 4+ characters, or all words for item names
-        if (word.length >= 4 || isItemName) {
-            return word.charAt(0).toUpperCase() + (isItemName ? word.slice(1) : lowerWord.slice(1));
-        }
-
-        return isItemName ? word : lowerWord;
-    }).join(' ');
-
-    return formattedText;
-}
-
-// Helper function to handle field formatting
-function handleFieldFormatting(frm, fieldName, settingKey, isItemName = false) {
-    if (!frm.doc.custom_automate) {
-        console.log(`${fieldName} trigger activated but custom_automate is disabled. Skipping.`);
-        return;
-    }
-
-    console.log(`${fieldName} trigger activated and custom_automate is enabled`);
-
-    getAutomationSettings(function(settings) {
-        console.log("Automation Settings:", settings);
-
-        const shouldFormat = settings.enable_item_automation && !settings[settingKey];
-        
-        if (shouldFormat) {
-            const originalValue = frm.doc[fieldName.toLowerCase().replace(' ', '_')];
-            const formattedValue = formatText(originalValue, isItemName);
-            console.log(`Formatted ${fieldName}:`, formattedValue);
-            frm.set_value(fieldName.toLowerCase().replace(' ', '_'), formattedValue);
-            console.log(`${fieldName} has been formatted and set.`);
-        } else {
-            console.log(`Skipping formatting. Either enable_item_automation is disabled or ${settingKey} is enabled.`);
-        }
-    });
 }
