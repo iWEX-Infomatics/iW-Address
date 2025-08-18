@@ -1,263 +1,158 @@
-// Global debounce handler - reusable across all forms
+// ---------- Global Debounce & Formatting Handler ----------
 const FormHandler = {
     timeouts: {},
     lastValues: {},
-    
-    handle(frm, fieldname, automationField, formatFunction, realTimeFunction) {
+
+    handle(frm, fieldname, automationField, formatFn, realTimeFn) {
         if (!frm.doc.custom_automate) return;
-        
-        const currentValue = frm.doc[fieldname] || '';
-        
-        // Real-time formatting check
-        this.checkAutomation(automationField, (enabled) => {
+        const val = frm.doc[fieldname] || '';
+
+        // Real-time formatting
+        this.checkAutomation(automationField, enabled => {
             if (enabled) {
-                const formatted = realTimeFunction(currentValue);
-                if (currentValue !== formatted) {
-                    frm.set_value(fieldname, formatted);
-                    return;
-                }
+                const rtFormatted = realTimeFn(val);
+                if (val !== rtFormatted) return frm.set_value(fieldname, rtFormatted);
             }
         });
-        
+
         // Debounced full formatting
         clearTimeout(this.timeouts[fieldname]);
         this.timeouts[fieldname] = setTimeout(() => {
-            this.checkAutomation(automationField, (enabled) => {
-                if (enabled) {
-                    const valueToFormat = frm.doc[fieldname] || '';
-                    if (this.lastValues[fieldname] === valueToFormat) return;
-                    
-                    const formatted = formatFunction(valueToFormat);
-                    if (valueToFormat !== formatted) {
-                        this.lastValues[fieldname] = formatted;
-                        frm.set_value(fieldname, formatted);
-                    } else {
-                        this.lastValues[fieldname] = valueToFormat;
-                    }
+            this.checkAutomation(automationField, enabled => {
+                if (!enabled) return;
+                const newVal = frm.doc[fieldname] || '';
+                if (this.lastValues[fieldname] === newVal) return;
 
-                    // Check manual correction after formatting
-                    checkForManualCorrection(frm, fieldname);
-                }
+                const formatted = formatFn(newVal);
+                this.lastValues[fieldname] = formatted;
+                if (newVal !== formatted) frm.set_value(fieldname, formatted);
+
+                checkForManualCorrection(frm, fieldname);
             });
         }, 300);
     },
-    
+
     cleanup(frm, fields) {
         Object.values(this.timeouts).forEach(clearTimeout);
         this.timeouts = {};
-        
-        fields.forEach(fieldname => {
-            const value = frm.doc[fieldname];
-            if (value) {
-                const cleaned = value.replace(/[,\s]+$/, '').trim();
-                if (value !== cleaned) frm.set_value(fieldname, cleaned);
+        fields.forEach(f => {
+            const val = frm.doc[f];
+            if (val) {
+                const cleaned = val.replace(/[,\s]+$/, '').trim();
+                if (val !== cleaned) frm.set_value(f, cleaned);
             }
         });
     },
-    
-    checkAutomation(field, callback) {
+
+    checkAutomation(field, cb) {
         frappe.call({
             method: 'frappe.client.get_single_value',
-            args: {
-                doctype: 'Settings for Automation',
-                field: field
-            },
-            callback: (res) => callback(!!res.message)
+            args: { doctype: 'Settings for Automation', field },
+            callback: res => cb(!!res.message)
         });
     }
 };
 
-// Text formatting utilities
+// ---------- Text Formatting ----------
 const TextFormatter = {
     lowercaseWords: ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'],
-    
+
     realTime(text, allowNumbers = false) {
         if (!text || text.endsWith(' ')) return text;
-
-        return text.split(' ').map((word, index) => {
+        return text.split(' ').map((word, i) => {
             if (!word || word === word.toUpperCase()) return word;
             const lower = word.toLowerCase();
-            if (this.lowercaseWords.includes(lower) && index !== 0) return lower;
-            return lower.charAt(0).toUpperCase() + lower.slice(1);
+            return (this.lowercaseWords.includes(lower) && i !== 0)
+                ? lower
+                : lower.charAt(0).toUpperCase() + lower.slice(1);
         }).join(' ');
     },
-    
+
     full(text, allowNumbers = false) {
         if (!text || text.endsWith(' ')) return text;
-
         const regex = allowNumbers ? /[^a-zA-Z0-9\s]/g : /[^a-zA-Z\s]/g;
-
-        return text
-            .replace(regex, '')
-            .trim()
-            .replace(/\s+/g, ' ')
-            .replace(/[,\s]+$/, '')
+        return text.replace(regex, '')
+            .trim().replace(/\s+/g, ' ').replace(/[,\s]+$/, '')
             .replace(/\(/g, ' (')
             .split(' ')
-            .filter(word => word.length > 0)
-            .map((word, index) => {
+            .filter(Boolean)
+            .map((word, i) => {
                 if (word === word.toUpperCase()) return word;
                 const lower = word.toLowerCase();
-                if (this.lowercaseWords.includes(lower) && index !== 0) return lower;
-                return lower.charAt(0).toUpperCase() + lower.slice(1);
+                return (this.lowercaseWords.includes(lower) && i !== 0)
+                    ? lower
+                    : lower.charAt(0).toUpperCase() + lower.slice(1);
             })
             .join(' ');
     }
-
 };
 
+// ---------- Payment Term Form Logic ----------
 frappe.ui.form.on('Payment Term', {
     onload(frm) {
-        if (frm.is_new()) {
-            console.log("New form - setting custom_automate to 1");
-            frm.set_value('custom_automate', 1);
-        }
+        if (frm.is_new()) frm.set_value('custom_automate', 1);
         frm._original_values = {};
-        frm._popup_shown_fields = {};  // <-- Add this line to track shown popups
-    },
-
-    refresh(frm) {
-        frm._original_values['payment_term_name'] = frm.doc.payment_term_name;
-        frm._original_values['description'] = frm.doc.description;
-
-        // Reset popup tracking on refresh (optional)
         frm._popup_shown_fields = {};
     },
 
+    refresh(frm) {
+        ['payment_term_name', 'description'].forEach(f => {
+            frm._original_values[f] = frm.doc[f];
+        });
+        frm._popup_shown_fields = {};
+    },
 
-    // Using debounced FormHandler for payment_term_name
     payment_term_name(frm) {
-        FormHandler.handle(
-            frm, 
-            'payment_term_name', 
-            'custom_payment_term', 
-            (text) => TextFormatter.full(text, false), 
-            (text) => TextFormatter.realTime(text, false)
+        FormHandler.handle(frm, 'payment_term_name', 'custom_payment_term',
+            t => TextFormatter.full(t, false),
+            t => TextFormatter.realTime(t, false)
         );
     },
 
-    // Using debounced FormHandler for description
     description(frm) {
-        FormHandler.handle(
-            frm, 
-            'description', 
-            'custom_payment_term', 
-            (text) => TextFormatter.full(text, false), 
-            (text) => TextFormatter.realTime(text, false)
+        FormHandler.handle(frm, 'description', 'custom_payment_term',
+            t => TextFormatter.full(t, false),
+            t => TextFormatter.realTime(t, false)
         );
     },
 
     before_save(frm) {
-        // Clean up trailing spaces/commas before saving
         FormHandler.cleanup(frm, ['payment_term_name', 'description']);
-        
-        if (frm.doc.custom_automate === 1) {
-            console.log("Before save - disabling custom_automate");
-            frm.set_value('custom_automate', 0);
-        }
+        if (frm.doc.custom_automate === 1) frm.set_value('custom_automate', 0);
     }
 });
 
+// ---------- Manual Correction Popup ----------
 function checkForManualCorrection(frm, fieldname) {
-    if (!frm._original_values) return;
-    if (!frm._popup_shown_fields) frm._popup_shown_fields = {};
-
-    // Agar is field ke liye popup pehle hi dikh chuka hai to return kar do
-    if (frm._popup_shown_fields[fieldname]) return;
-
+    if (!frm._original_values || frm._popup_shown_fields[fieldname]) return;
     const oldVal = frm._original_values[fieldname] || '';
     const newVal = frm.doc[fieldname] || '';
+    if (!oldVal || !newVal || oldVal === newVal) return;
 
-    if (oldVal && newVal && oldVal !== newVal) {
-        const oldWords = oldVal.split(/\s+/);
-        const newWords = newVal.split(/\s+/);
+    const oldWords = oldVal.split(/\s+/);
+    const newWords = newVal.split(/\s+/);
 
-        for (let i = 0; i < oldWords.length; i++) {
-            if (newWords[i] && oldWords[i] !== newWords[i]) {
-                const original = oldWords[i];
-                const corrected = newWords[i];
-
-                // Mark popup as shown for this field so it won't repeat
-                frm._popup_shown_fields[fieldname] = true;
-
-                frappe.confirm(
-                    `You corrected "<b>${original}</b>" to "<b>${corrected}</b>".<br><br>Do you want to add it to your Private Dictionary?`,
-                    () => {
-                        frappe.call({
-                            method: "validation.validation.doctype.private_dictionary.private_dictionary.add_to_dictionary",
-                            args: { original, corrected },
-                            callback: () => {
-                                frappe.show_alert("Word added to Private Dictionary!");
-                                frm._original_values[fieldname] = newVal; // update original to avoid repeat popup
-                            }
-                        });
-                    },
-                    () => {
-                        frappe.show_alert("Skipped adding to dictionary.");
-                        frm._original_values[fieldname] = newVal; // update original anyway
-                    }
-                );
-
-                break; // show popup once per first detected correction
-            }
+    for (let i = 0; i < oldWords.length; i++) {
+        if (newWords[i] && oldWords[i] !== newWords[i]) {
+            frm._popup_shown_fields[fieldname] = true;
+            frappe.confirm(
+                `You corrected "<b>${oldWords[i]}</b>" to "<b>${newWords[i]}</b>".<br><br>Do you want to add it to your Private Dictionary?`,
+                () => {
+                    frappe.call({
+                        method: "validation.validation.doctype.private_dictionary.private_dictionary.add_to_dictionary",
+                        args: { original: oldWords[i], corrected: newWords[i] },
+                        callback: () => {
+                            frappe.show_alert("Word added to Private Dictionary!");
+                            frm._original_values[fieldname] = newVal;
+                        }
+                    });
+                },
+                () => {
+                    frappe.show_alert("Skipped adding to dictionary.");
+                    frm._original_values[fieldname] = newVal;
+                }
+            );
+            break;
         }
     }
-}
-
-
-// Legacy helper functions (for compatibility)
-
-function handleFormattingAutomation(frm, fieldName, automationField) {
-    if (!frm.doc.custom_automate) {
-        console.log(`custom_automate is disabled - skipping ${fieldName}`);
-        return;
-    }
-
-    console.log(`${fieldName} changed - checking automation setting`);
-
-    checkAutomationEnabled(automationField, (isEnabled) => {
-        if (isEnabled) {
-            const original = frm.doc[fieldName];
-            const formatted = formatText(original);
-            frm.set_value(fieldName, formatted);
-            console.log(`Formatted ${fieldName}:`, formatted);
-        }
-    });
-}
-
-function formatText(text) {
-    if (!text) return '';
-
-    const lowercaseWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
-
-    return text
-        .replace(/[^a-zA-Z\s]/g, '')                
-        .trim()
-        .replace(/\s+/g, ' ')
-        .replace(/[,\s]+$/, '')
-        .replace(/\(/g, ' (')
-        .split(' ')
-        .filter(word => word.length > 0)
-        .map((word, index) => {
-            if (word === word.toUpperCase()) return word; 
-            const lower = word.toLowerCase();
-            if (lowercaseWords.includes(lower) && index !== 0) return lower;
-            return lower.charAt(0).toUpperCase() + lower.slice(1);
-        })
-        .join(' ');
-}
-
-function checkAutomationEnabled(fieldName, callback) {
-    frappe.call({
-        method: 'frappe.client.get_single_value',
-        args: {
-            doctype: 'Settings for Automation',
-            field: fieldName
-        },
-        callback: res => {
-            const isEnabled = !!res.message;
-            console.log(`${fieldName} automation enabled?`, isEnabled);
-            if (callback) callback(isEnabled);
-        }
-    });
 }

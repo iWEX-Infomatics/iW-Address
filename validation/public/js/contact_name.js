@@ -1,105 +1,63 @@
 frappe.ui.form.on('Contact', {
     onload(frm) {
-        if (frm.is_new()) {
-            frm.set_value('custom_automate', 1);
-        }
+        if (frm.is_new()) frm.set_value('custom_automate', 1);
 
-        // Capture original values for autocorrect tracking
+        // Store original values for autocorrect tracking
+        const textFields = get_text_fields(frm);
         if (!frm._original_values) {
-            frm._original_values = {};
-            frm.meta.fields.forEach(field => {
-                if (["Data", "Small Text", "Text", "Long Text", "Text Editor"].includes(field.fieldtype)) {
-                    frm._original_values[field.fieldname] = frm.doc[field.fieldname];
-                }
-            });
+            frm._original_values = Object.fromEntries(
+                textFields.map(f => [f.fieldname, frm.doc[f.fieldname]])
+            );
         }
 
-        check_automation_enabled('enable_contact_automation', (is_enabled) => {
-            console.log("Automation enabled:", is_enabled);
+        // Cache automation setting for faster checks
+        check_automation_enabled('enable_contact_automation', enabled => {
+            frm._automation_enabled = enabled;
+            console.log("Automation enabled:", enabled);
         });
     },
 
-    first_name: (frm) => handle_name_field(frm, 'first_name'),
-    middle_name: (frm) => handle_name_field(frm, 'middle_name'),
-    last_name: (frm) => handle_name_field(frm, 'last_name'),
+    first_name: frm => handle_name_field(frm, 'first_name'),
+    middle_name: frm => handle_name_field(frm, 'middle_name'),
+    last_name: frm => handle_name_field(frm, 'last_name'),
 
     validate(frm) {
-        if (!frm._confirmed_fields) {
-            frm._confirmed_fields = {};
-        }
+        if (!frm._confirmed_fields) frm._confirmed_fields = {};
+        const changes = detect_word_changes(frm);
 
-        // Detect manual corrections and prompt to add to private dictionary
-        let changes = [];
-
-        frm.meta.fields.forEach(field => {
-            if (["Data", "Small Text", "Text", "Long Text", "Text Editor"].includes(field.fieldtype)) {
-                const old_val = frm._original_values[field.fieldname];
-                const new_val = frm.doc[field.fieldname];
-
-                if (old_val && new_val && old_val !== new_val) {
-                    const old_words = old_val.split(/\s+/);
-                    const new_words = new_val.split(/\s+/);
-
-                    old_words.forEach((word, idx) => {
-                        if (new_words[idx] && word !== new_words[idx]) {
-                            // Only prompt if not already confirmed for this field
-                            if (!frm._confirmed_fields[field.fieldname]) {
-                                changes.push({
-                                    original: word,
-                                    corrected: new_words[idx],
-                                    fieldname: field.fieldname
-                                });
-                            }
-                        }
-                    });
-                }
-            }
-        });
-
-        if (changes.length > 0) {
-            const change = changes[0]; // Prompt only for the first detected correction
-
+        if (changes.length) {
+            const { original, corrected, fieldname } = changes[0];
             frappe.confirm(
-                `You corrected "<b>${change.original}</b>" to "<b>${change.corrected}</b>".<br><br>Do you want to add it to your Private Dictionary?`,
-                () => {
-                    // YES
+                `You corrected "<b>${original}</b>" to "<b>${corrected}</b>".<br><br>Do you want to add it to your Private Dictionary?`,
+                () => { // YES
                     frappe.call({
                         method: "validation.validation.doctype.private_dictionary.private_dictionary.add_to_dictionary",
-                        args: {
-                            original: change.original,
-                            corrected: change.corrected
-                        },
+                        args: { original, corrected },
                         callback: () => {
                             frappe.show_alert("Word added to Private Dictionary!");
                             frm.reload_doc();
                         }
                     });
-                    // Mark this field as confirmed
-                    frm._confirmed_fields[change.fieldname] = true;
+                    frm._confirmed_fields[fieldname] = true;
                 },
-                () => {
-                    // NO
+                () => { // NO
                     frappe.show_alert("Skipped adding to dictionary.");
-                    // Also mark confirmed to avoid repeated popups for this field
-                    frm._confirmed_fields[change.fieldname] = true;
+                    frm._confirmed_fields[fieldname] = true;
                 }
             );
         }
     },
 
-
     before_save(frm) {
-        // Clear all pending timeouts before save
-        Object.values(debounceTimeouts).forEach(timeout => clearTimeout(timeout));
-        
-        // Clean up trailing commas and spaces before save
-        ['first_name', 'middle_name', 'last_name'].forEach(fieldname => {
-            const value = frm.doc[fieldname];
-            if (value) {
-                const cleaned = value.replace(/[,\s]+$/, '').trim();
-                if (value !== cleaned) {
-                    frm.set_value(fieldname, cleaned);
-                }
+        // Cancel pending debounce timers
+        Object.values(debounceTimeouts).forEach(clearTimeout);
+
+        // Clean trailing commas/spaces
+        ['first_name', 'middle_name', 'last_name'].forEach(f => {
+            const val = frm.doc[f];
+            if (val) {
+                const cleaned = val.replace(/[,\s]+$/, '').trim();
+                if (val !== cleaned) frm.set_value(f, cleaned);
             }
         });
 
@@ -107,105 +65,89 @@ frappe.ui.form.on('Contact', {
     }
 });
 
-// Debounce timeouts for each field — to avoid formatting too early
+// ------------------ Constants & Helpers ------------------
+const TEXT_TYPES = ["Data", "Small Text", "Text", "Long Text", "Text Editor"];
+const LOWERCASE_WORDS = [
+    'a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor',
+    'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'
+];
+
 const debounceTimeouts = {};
-// Store last processed values to avoid unnecessary formatting
 const lastProcessedValues = {};
+
+function get_text_fields(frm) {
+    return frm.meta.fields.filter(f => TEXT_TYPES.includes(f.fieldtype));
+}
+
+function detect_word_changes(frm) {
+    const changes = [];
+    get_text_fields(frm).forEach(({ fieldname }) => {
+        const oldVal = frm._original_values[fieldname];
+        const newVal = frm.doc[fieldname];
+        if (oldVal && newVal && oldVal !== newVal) {
+            const oldWords = oldVal.split(/\s+/);
+            const newWords = newVal.split(/\s+/);
+            oldWords.forEach((word, i) => {
+                if (newWords[i] && word !== newWords[i] && !frm._confirmed_fields[fieldname]) {
+                    changes.push({ original: word, corrected: newWords[i], fieldname });
+                }
+            });
+        }
+    });
+    return changes;
+}
 
 function handle_name_field(frm, fieldname) {
     if (!frm.doc.custom_automate) return;
-    
+
     const currentValue = frm.doc[fieldname] || '';
-    
-    check_automation_enabled('enable_contact_automation', (is_enabled) => {
-        if (is_enabled) {
-            // Real-time formatting for 4+ character words
-            const realTimeFormatted = format_name_realtime(currentValue);
-            
-            if (currentValue !== realTimeFormatted) {
-                frm.set_value(fieldname, realTimeFormatted);
+
+    if (frm._automation_enabled) {
+        const rtFormatted = format_name(currentValue, true);
+        if (currentValue !== rtFormatted) {
+            frm.set_value(fieldname, rtFormatted);
+            return update_full_name(frm);
+        }
+    }
+
+    clearTimeout(debounceTimeouts[fieldname]);
+    debounceTimeouts[fieldname] = setTimeout(() => {
+        if (frm._automation_enabled) {
+            const val = frm.doc[fieldname] || '';
+            if (lastProcessedValues[fieldname] === val) return;
+
+            const formatted = format_name(val);
+            if (val !== formatted) {
+                lastProcessedValues[fieldname] = formatted;
+                frm.set_value(fieldname, formatted);
                 update_full_name(frm);
-                return;
+            } else {
+                lastProcessedValues[fieldname] = val;
             }
         }
-    });
-    
-    // Clear any previous timeout set for this field
-    if (debounceTimeouts[fieldname]) {
-        clearTimeout(debounceTimeouts[fieldname]);
-    }
-    
-    // Set a new timeout for full formatting after typing has paused
-    debounceTimeouts[fieldname] = setTimeout(() => {
-        check_automation_enabled('enable_contact_automation', (is_enabled) => {
-            if (is_enabled) {
-                const valueToFormat = frm.doc[fieldname] || '';
-                
-                // Skip if value hasn't changed since last processing
-                if (lastProcessedValues[fieldname] === valueToFormat) {
-                    return;
-                }
-                
-                const formatted = format_name(valueToFormat);
-                
-                // Only update if formatting actually changed something
-                if (valueToFormat !== formatted) {
-                    lastProcessedValues[fieldname] = formatted;
-                    frm.set_value(fieldname, formatted);
-                    update_full_name(frm);
-                } else {
-                    lastProcessedValues[fieldname] = valueToFormat;
-                }
-            }
-        });
     }, 300);
 }
 
-function format_name_realtime(name) {
-    if (!name) return '';
-    if (name.endsWith(' ')) return name;
+function format_name(name, realtime = false) {
+    if (!name || name.endsWith(' ')) return name || '';
 
-    const lowercaseWords = [
-        'a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor',
-        'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'
-    ];
+    let cleaned = name;
+    if (!realtime) {
+        cleaned = name
+            .replace(/[^a-zA-Z\s]/g, '')
+            .trim()
+            .replace(/\s+/g, ' ')
+            .replace(/[,\s]+$/, '')
+            .replace(/\(/g, ' (');
+    }
 
-    return name
+    return cleaned
         .split(' ')
-        .map(word => {
-            if (!word) return word;
-            if (word === word.toUpperCase()) return word;
-
-            const lower = word.toLowerCase();
-            return lowercaseWords.includes(lower)
-                ? lower
-                : lower.charAt(0).toUpperCase() + lower.slice(1);
-        })
-        .join(' ');
-}
-
-function format_name(name) {
-    if (!name) return '';
-    if (name.endsWith(' ')) return name;
-
-    const lowercaseWords = [
-        'a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor',
-        'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'
-    ];
-
-    return name
-        .replace(/[^a-zA-Z\s]/g, '')
-        .trim()
-        .replace(/\s+/g, ' ')
-        .replace(/[,\s]+$/, '')
-        .replace(/\(/g, ' (')
-        .split(' ')
-        .filter(word => word.length > 0)
+        .filter(Boolean)
         .map(word => {
             if (word === word.toUpperCase()) return word;
-
             const lower = word.toLowerCase();
-            return lowercaseWords.includes(lower)
+            return LOWERCASE_WORDS.includes(lower)
                 ? lower
                 : lower.charAt(0).toUpperCase() + lower.slice(1);
         })
@@ -213,22 +155,17 @@ function format_name(name) {
 }
 
 function update_full_name(frm) {
-    const full_name = ['first_name', 'middle_name', 'last_name']
-        .map(field => frm.doc[field])
+    const full = ['first_name', 'middle_name', 'last_name']
+        .map(f => frm.doc[f])
         .filter(Boolean)
         .join(' ');
-    frm.set_value('full_name', full_name);
+    frm.set_value('full_name', full);
 }
 
 function check_automation_enabled(fieldname, callback) {
     frappe.call({
         method: 'frappe.client.get_single_value',
-        args: {
-            doctype: 'Settings for Automation',
-            field: fieldname
-        },
-        callback(res) {
-            callback(!!res.message);
-        }
+        args: { doctype: 'Settings for Automation', field: fieldname },
+        callback: r => callback(!!r.message)
     });
 }

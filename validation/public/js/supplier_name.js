@@ -1,17 +1,17 @@
-// Global debounce handler - reusable across all forms
+// ======================= Utility: Debounce Form Handler =======================
 const FormHandler = {
     timeouts: {},
     lastValues: {},
 
-    handle(frm, fieldname, automationField, formatFunction, realTimeFunction) {
+    handle(frm, fieldname, automationField, formatFn, realtimeFn) {
         if (!frm.doc.custom_automate) return;
 
         const currentValue = frm.doc[fieldname] || '';
 
-        // Real-time formatting check
+        // Realtime formatting
         this.checkAutomation(automationField, (enabled) => {
             if (enabled) {
-                const formatted = realTimeFunction(currentValue);
+                const formatted = realtimeFn(currentValue);
                 if (currentValue !== formatted) {
                     frm.set_value(fieldname, formatted);
                     return;
@@ -23,21 +23,18 @@ const FormHandler = {
         clearTimeout(this.timeouts[fieldname]);
         this.timeouts[fieldname] = setTimeout(() => {
             this.checkAutomation(automationField, (enabled) => {
-                if (enabled) {
-                    const valueToFormat = frm.doc[fieldname] || '';
-                    if (this.lastValues[fieldname] === valueToFormat) return;
+                if (!enabled) return;
 
-                    const formatted = formatFunction(valueToFormat);
-                    if (valueToFormat !== formatted) {
-                        this.lastValues[fieldname] = formatted;
-                        frm.set_value(fieldname, formatted);
-                    } else {
-                        this.lastValues[fieldname] = valueToFormat;
-                    }
+                const valueToFormat = frm.doc[fieldname] || '';
+                if (this.lastValues[fieldname] === valueToFormat) return;
 
-                    // Check manual correction after formatting
-                    checkForManualCorrection(frm, fieldname);
+                const formatted = formatFn(valueToFormat);
+                this.lastValues[fieldname] = formatted;
+                if (valueToFormat !== formatted) {
+                    frm.set_value(fieldname, formatted);
                 }
+
+                // Manual correction check moved to before_save
             });
         }, 300);
     },
@@ -45,12 +42,11 @@ const FormHandler = {
     cleanup(frm, fields) {
         Object.values(this.timeouts).forEach(clearTimeout);
         this.timeouts = {};
-
-        fields.forEach(fieldname => {
-            const value = frm.doc[fieldname];
+        fields.forEach((field) => {
+            const value = frm.doc[field];
             if (value) {
                 const cleaned = value.replace(/[,\s]+$/, '').trim();
-                if (value !== cleaned) frm.set_value(fieldname, cleaned);
+                if (value !== cleaned) frm.set_value(field, cleaned);
             }
         });
     },
@@ -58,35 +54,35 @@ const FormHandler = {
     checkAutomation(field, callback) {
         frappe.call({
             method: 'frappe.client.get_single_value',
-            args: {
-                doctype: 'Settings for Automation',
-                field: field
-            },
+            args: { doctype: 'Settings for Automation', field },
             callback: (res) => callback(!!res.message)
         });
     }
 };
 
-// Text formatting utilities
+// ======================= Utility: Text Formatter =======================
 const TextFormatter = {
-    lowercaseWords: ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'],
+    lowercaseWords: [
+        'a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor',
+        'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'
+    ],
+
+    capitalizeWord(word, index) {
+        if (!word || word === word.toUpperCase()) return word;
+        const lower = word.toLowerCase();
+        return (this.lowercaseWords.includes(lower) && index !== 0)
+            ? lower
+            : lower.charAt(0).toUpperCase() + lower.slice(1);
+    },
 
     realTime(text, allowNumbers = false) {
         if (!text || text.endsWith(' ')) return text;
-
-        return text.split(' ').map((word, index) => {
-            if (!word || word === word.toUpperCase()) return word;
-            const lower = word.toLowerCase();
-            if (this.lowercaseWords.includes(lower) && index !== 0) return lower;
-            return lower.charAt(0).toUpperCase() + lower.slice(1);
-        }).join(' ');
+        return text.split(' ').map((w, i) => this.capitalizeWord(w, i)).join(' ');
     },
 
     full(text, allowNumbers = false) {
-        if (!text || text.endsWith(' ')) return text;
-
+        if (!text) return '';
         const regex = allowNumbers ? /[^a-zA-Z0-9\s]/g : /[^a-zA-Z\s]/g;
-
         return text
             .replace(regex, '')
             .trim()
@@ -94,275 +90,177 @@ const TextFormatter = {
             .replace(/[,\s]+$/, '')
             .replace(/\(/g, ' (')
             .split(' ')
-            .filter(word => word.length > 0)
-            .map((word, index) => {
-                if (word === word.toUpperCase()) return word;
-                const lower = word.toLowerCase();
-                if (this.lowercaseWords.includes(lower) && index !== 0) return lower;
-                return lower.charAt(0).toUpperCase() + lower.slice(1);
-            })
+            .filter(Boolean)
+            .map((w, i) => this.capitalizeWord(w, i))
             .join(' ');
     }
 };
 
+// ======================= Supplier Form Events =======================
 frappe.ui.form.on('Supplier', {
-    onload: function(frm) {
-        if (frm.is_new()) {
-            console.log("Form is new. Initializing custom_automate.");
-            frm.set_value('custom_automate', 1);
-        }
+    onload(frm) {
+        if (frm.is_new()) frm.set_value('custom_automate', 1);
         frm._original_values = {};
-        frm._popup_shown_fields = {};  // <-- yahan add karein
-    },
-
-    refresh: function(frm) {
-        frm._original_values['supplier_name'] = frm.doc.supplier_name;
-        frm._original_values['supplier_details'] = frm.doc.supplier_details;
-
-        // Optional: agar form refresh hota hai to popup tracking reset karna ho to
         frm._popup_shown_fields = {};
     },
 
+    refresh(frm) {
+        frm._original_values['supplier_name'] = frm.doc.supplier_name;
+        frm._original_values['supplier_details'] = frm.doc.supplier_details;
+        frm._popup_shown_fields = {};
+    },
 
-    supplier_primary_address: function(frm) {
+    supplier_primary_address(frm) {
         if (frm.doc.custom_automate !== 1 || !frm.doc.supplier_primary_address) return;
-
         frappe.call({
             method: 'frappe.client.get',
-            args: {
-                doctype: 'Address',
-                name: frm.doc.supplier_primary_address
-            },
-            callback: function(res) {
-                if (res.message && res.message.country === "India") {
-                    console.log("Primary address country is India");
-                    set_indian_defaults(frm, "Receivable");
-                }
+            args: { doctype: 'Address', name: frm.doc.supplier_primary_address },
+            callback(res) {
+                if (res.message?.country === 'India') setIndianDefaults(frm, 'Receivable');
             }
         });
     },
 
-    country: function(frm) {
+    country(frm) {
         if (frm.doc.custom_automate !== 1 || !frm.doc.country) return;
-
-        if (frm.doc.country === "India") {
-            console.log("Country is India");
-            set_indian_defaults(frm, "Payable");
-        }
+        if (frm.doc.country === 'India') setIndianDefaults(frm, 'Payable');
     },
 
-    supplier_name: function(frm) {
+    supplier_name(frm) {
         FormHandler.handle(
             frm,
             'supplier_name',
             'enable_supplier_automation',
-            (text) => TextFormatter.full(text, false),
-            (text) => TextFormatter.realTime(text, false)
+            (t) => TextFormatter.full(t, false),
+            (t) => TextFormatter.realTime(t, false)
         );
     },
 
-    supplier_details: function(frm) {
+    supplier_details(frm) {
         FormHandler.handle(
             frm,
             'supplier_details',
             'enable_supplier_automation',
-            (text) => TextFormatter.full(text, false),
-            (text) => TextFormatter.realTime(text, false)
+            (t) => TextFormatter.full(t, false),
+            (t) => TextFormatter.realTime(t, false)
         );
     },
 
-    before_save: function(frm) {
-        FormHandler.cleanup(frm, ['supplier_name', 'supplier_details']);
-
-        if (frm.doc.custom_automate) {
-            console.log("Before Save: Disabling custom_automate");
-            frm.set_value('custom_automate', 0);
-        }
+    before_save(frm) {
+        const fields = ['supplier_name', 'supplier_details'];
+        FormHandler.cleanup(frm, fields);
+        fields.forEach(field => checkForManualCorrection(frm, field));
+        if (frm.doc.custom_automate) frm.set_value('custom_automate', 0);
     }
 });
 
-// --------------------- Utility Functions ----------------------
-
-function set_indian_defaults(frm, account_type) {
-    frm.set_value("default_currency", "INR");
-    frm.set_value("default_price_list", "INR Buying");
+// ======================= Helpers =======================
+function setIndianDefaults(frm, accountType) {
+    frm.set_value('default_currency', 'INR');
+    frm.set_value('default_price_list', 'INR Buying');
 
     frappe.call({
-        method: "frappe.client.get_value",
-        args: {
-            doctype: "Company",
-            filters: {},
-            fieldname: "name"
-        },
-        callback: function(r) {
-            if (r.message) {
-                let company = r.message.name;
+        method: 'frappe.client.get_value',
+        args: { doctype: 'Company', filters: {}, fieldname: 'name' },
+        callback(r) {
+            if (!r.message) return;
+            const company = r.message.name;
 
-                if (!frm.doc.accounts || frm.doc.accounts.length === 0) {
-                    add_account_row(frm, company, account_type);
-                } else {
-                    frm.doc.accounts.forEach(row => {
-                        row.company = company;
-                        get_account_name(company, account_type, function(account_name) {
-                            if (account_name) {
-                                row.account = account_name;
-                                frm.refresh_field("accounts");
-                            }
-                        });
-                    });
-                }
-
-                if (account_type === "Receivable") {
-                    frappe.call({
-                        method: "frappe.client.get_list",
-                        args: {
-                            doctype: "Bank Account",
-                            filters: {
-                                company: company,
-                                is_default: 1,
-                                is_company_account: 1
-                            },
-                            fields: ["name"],
-                            limit_page_length: 1
-                        },
-                        callback: function(bank_res) {
-                            if (bank_res.message && bank_res.message.length > 0) {
-                                frm.set_value("default_bank_account", bank_res.message[0].name);
-                            }
+            if (!frm.doc.accounts?.length) {
+                addAccountRow(frm, company, accountType);
+            } else {
+                frm.doc.accounts.forEach((row) => {
+                    row.company = company;
+                    getAccountName(company, accountType, (accName) => {
+                        if (accName) {
+                            row.account = accName;
+                            frm.refresh_field('accounts');
                         }
                     });
-                }
+                });
+            }
+
+            if (accountType === 'Receivable') {
+                frappe.call({
+                    method: 'frappe.client.get_list',
+                    args: {
+                        doctype: 'Bank Account',
+                        filters: { company, is_default: 1, is_company_account: 1 },
+                        fields: ['name'],
+                        limit_page_length: 1
+                    },
+                    callback(bankRes) {
+                        if (bankRes.message?.length) {
+                            frm.set_value('default_bank_account', bankRes.message[0].name);
+                        }
+                    }
+                });
             }
         }
     });
 }
 
-function add_account_row(frm, company, account_type) {
-    let row = frm.add_child("accounts");
+function addAccountRow(frm, company, accountType) {
+    const row = frm.add_child('accounts');
     row.company = company;
-
-    get_account_name(company, account_type, function(account_name) {
-        if (account_name) {
-            row.account = account_name;
-            frm.refresh_field("accounts");
+    getAccountName(company, accountType, (accName) => {
+        if (accName) {
+            row.account = accName;
+            frm.refresh_field('accounts');
         }
     });
 }
 
-function get_account_name(company, account_type, callback) {
-    const root_type = account_type === "Receivable" ? "Asset" : "Liability";
-
+function getAccountName(company, accountType, callback) {
+    const rootType = accountType === 'Receivable' ? 'Asset' : 'Liability';
     frappe.call({
-        method: "frappe.client.get_list",
+        method: 'frappe.client.get_list',
         args: {
-            doctype: "Account",
-            filters: {
-                company: company,
-                account_type: account_type,
-                root_type: root_type,
-                is_group: 0
-            },
-            fields: ["name"],
+            doctype: 'Account',
+            filters: { company, account_type: accountType, root_type: rootType, is_group: 0 },
+            fields: ['name'],
             limit_page_length: 1
         },
-        callback: function(res) {
-            if (res.message && res.message.length > 0) {
-                callback(res.message[0].name);
-            }
+        callback(res) {
+            if (res.message?.length) callback(res.message[0].name);
         }
     });
 }
 
 function checkForManualCorrection(frm, fieldname) {
-    if (!frm._original_values) return;
-    if (!frm._popup_shown_fields) frm._popup_shown_fields = {};
-
-    // Agar is field ke liye popup pehle hi dikh chuka hai to return kar do
-    if (frm._popup_shown_fields[fieldname]) return;
+    if (!frm._original_values || frm._popup_shown_fields[fieldname]) return;
 
     const oldVal = frm._original_values[fieldname] || '';
     const newVal = frm.doc[fieldname] || '';
+    if (!oldVal || !newVal || oldVal === newVal) return;
 
-    if (oldVal && newVal && oldVal !== newVal) {
-        const oldWords = oldVal.split(/\s+/);
-        const newWords = newVal.split(/\s+/);
+    const oldWords = oldVal.split(/\s+/);
+    const newWords = newVal.split(/\s+/);
 
-        for (let i = 0; i < oldWords.length; i++) {
-            if (newWords[i] && oldWords[i] !== newWords[i]) {
-                const original = oldWords[i];
-                const corrected = newWords[i];
+    for (let i = 0; i < oldWords.length; i++) {
+        if (newWords[i] && oldWords[i] !== newWords[i]) {
+            const original = oldWords[i];
+            const corrected = newWords[i];
+            frm._popup_shown_fields[fieldname] = true;
 
-                // Mark popup as shown for this field so it won't repeat
-                frm._popup_shown_fields[fieldname] = true;
-
-                frappe.confirm(
-                    `You corrected "<b>${original}</b>" to "<b>${corrected}</b>".<br><br>Do you want to add it to your Private Dictionary?`,
-                    () => {
-                        frappe.call({
-                            method: "validation.validation.doctype.private_dictionary.private_dictionary.add_to_dictionary",
-                            args: { original, corrected },
-                            callback: () => {
-                                frappe.show_alert("Word added to Private Dictionary!");
-                                frm._original_values[fieldname] = newVal; // update to avoid repeat popup
-                            }
-                        });
-                    },
-                    () => {
-                        frappe.show_alert("Skipped adding to dictionary.");
-                        frm._original_values[fieldname] = newVal; // update to avoid repeat popup
-                    }
-                );
-
-                break; // show popup once per first detected correction
-            }
+            frappe.confirm(
+                `You corrected "<b>${original}</b>" to "<b>${corrected}</b>".<br><br>Do you want to add it to your Private Dictionary?`,
+                () => {
+                    frappe.call({
+                        method: 'validation.validation.doctype.private_dictionary.private_dictionary.add_to_dictionary',
+                        args: { original, corrected },
+                        callback: () => {
+                            frappe.show_alert('Word added to Private Dictionary!');
+                            frm._original_values[fieldname] = newVal;
+                        }
+                    });
+                },
+                () => {
+                    frappe.show_alert('Skipped adding to dictionary.');
+                    frm._original_values[fieldname] = newVal;
+                }
+            );
+            break;
         }
     }
-}
-
-// ========== Legacy Functions (kept for compatibility) ==========
-
-function handle_format_field(frm, fieldname) {
-    if (frm.doc.custom_automate) {
-        check_automation_enabled(frm, function(is_enabled) {
-            if (is_enabled) {
-                const formatted_value = format_name(frm.doc[fieldname]);
-                console.log(`Formatted ${fieldname}:`, formatted_value);
-                frm.set_value(fieldname, formatted_value);
-            }
-        });
-    } else {
-        console.log(`custom_automate is disabled. Skipping ${fieldname} trigger.`);
-    }
-}
-
-function check_automation_enabled(frm, callback) {
-    frappe.call({
-        method: 'frappe.client.get_single_value',
-        args: {
-            doctype: 'Settings for Automation',
-            field: 'enable_supplier_automation'
-        },
-        callback: function(response) {
-            const is_enabled = response.message ? response.message : false;
-            callback(is_enabled);
-        }
-    });
-}
-
-function format_name(name) {
-    if (!name) return '';
-
-    const lowercaseWords = ['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'from', 'by', 'in', 'of', 'with'];
-
-    let formattedName = name.replace(/[^a-zA-Z\s]/g, '');
-    formattedName = formattedName.trim().replace(/\s+/g, ' ').replace(/[,\s]+$/, '').replace(/\(/g, ' (');
-
-    formattedName = formattedName.split(' ').map((word, index) => {
-        if (word === word.toUpperCase()) return word;
-        const lower = word.toLowerCase();
-        if (lowercaseWords.includes(lower) && index !== 0) return lower;
-        return lower.charAt(0).toUpperCase() + lower.slice(1);
-    }).join(' ');
-
-    return formattedName;
 }
