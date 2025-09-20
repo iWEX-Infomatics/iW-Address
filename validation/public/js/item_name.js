@@ -43,7 +43,8 @@ const FormHandler = {
         const currentValue = frm.doc[fieldname] || '';
 
         this.getItemAutomationSettings((settings) => {
-            const shouldFormat = settings.enable_item_automation && !settings[settingKey];
+            // ✅ Fix: apply formatting only if settingKey is enabled
+            const shouldFormat = settings.enable_item_automation && settings[settingKey];
             if (shouldFormat) {
                 const formatted = realTimeFunction(currentValue);
                 if (currentValue !== formatted) {
@@ -56,7 +57,7 @@ const FormHandler = {
         clearTimeout(this.timeouts[fieldname]);
         this.timeouts[fieldname] = setTimeout(() => {
             this.getItemAutomationSettings((settings) => {
-                const shouldFormat = settings.enable_item_automation && !settings[settingKey];
+                const shouldFormat = settings.enable_item_automation && settings[settingKey];
                 if (shouldFormat) {
                     const valueToFormat = frm.doc[fieldname] || '';
                     if (this.lastValues[fieldname] === valueToFormat) return;
@@ -80,7 +81,8 @@ const FormHandler = {
         fields.forEach(fieldname => {
             const value = frm.doc[fieldname];
             if (value) {
-                const cleaned = value.replace(/[,\s]+$/, '').trim();
+                // ✅ Fix: also collapse multiple spaces
+                const cleaned = value.replace(/\s+/g, ' ').replace(/[,\s]+$/, '').trim();
                 if (value !== cleaned) frm.set_value(fieldname, cleaned);
             }
         });
@@ -160,11 +162,8 @@ const ItemTextFormatter = {
                 return lowerWord;
             }
 
-            if (word.length >= 4 || isItemName) {
-                return word.charAt(0).toUpperCase() + (isItemName ? word.slice(1) : lowerWord.slice(1));
-            }
-
-            return isItemName ? word : lowerWord;
+            // ✅ Fix: always normalize capitalization
+            return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
         }).join(' ');
     },
 
@@ -191,7 +190,7 @@ const ItemTextFormatter = {
                     return lowerWord;
                 }
 
-                return word.charAt(0).toUpperCase() + (isItemName ? word.slice(1) : lowerWord.slice(1));
+                return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
             })
             .join(' ');
     }
@@ -244,8 +243,9 @@ frappe.ui.form.on('Item', {
             (text) => ItemTextFormatter.realTime(text, true)
         );
 
+        // ✅ Fix: only copy if description is empty
         setTimeout(() => {
-            if (frm.doc.item_name) {
+            if (frm.doc.item_name && !frm.doc.description) {
                 frm.set_value('description', frm.doc.item_name);
             }
         }, 350);
@@ -345,7 +345,6 @@ function checkForManualCorrection(frm, fieldname) {
         }
     }
 }
-
 
 // Tax setup
 function clearNonEmptyTaxRows(frm) {
