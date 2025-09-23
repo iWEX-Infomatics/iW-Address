@@ -64,7 +64,7 @@ doctype_js = {
     "Customer Group" : "public/js/customer_group.js",
     "Supplier Group" : "public/js/supplier_group.js",
     "Brand" : "public/js/brand.js",
-    "Sales Invoice" : "public/js/sales_invoice.js",
+    # "Sales Invoice" : "public/js/sales_invoice.js",
     "Terms and Conditions" : "public/js/terms.js",
     "Payment Term" : "public/js/payment_terms.js",
     "Payment Terms Template" : "public/js/payment_term_template.js",
