@@ -19,7 +19,7 @@ frappe.query_reports["Document Time Tracking"] = {
             "options": "DocType",
             "get_query": function() {
                 return {
-                    query: "validation.stock.report.document_time_tracking.document_time_tracking.get_doctype_list"
+                    query: "validation.validation.report.document_time_tracking.document_time_tracking.get_doctype_list"
                 };
             }
         },
