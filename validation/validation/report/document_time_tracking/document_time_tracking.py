@@ -64,7 +64,7 @@ def get_columns():
         },
         {
             "fieldname": "total_time_minutes",
-            "label": _("Total Time"),
+            "label": _("Total Time (HH:MM:SS)"),
             "fieldtype": "Data",
             "width": 150
         }
@@ -78,17 +78,17 @@ def get_consolidated_columns():
             "label": _("User"),
             "fieldtype": "Link",
             "options": "User",
-            "width": 300
+            "width": 250
         },
         {
             "fieldname": "document_type",
             "label": _("Document Type"),
             "fieldtype": "Data",
-            "width": 300
+            "width": 250
         },
         {
             "fieldname": "total_time_minutes",
-            "label": _("Total Time"),
+            "label": _("Total Time (HH:MM:SS)"),
             "fieldtype": "Data",
             "width": 200
         }
@@ -235,11 +235,14 @@ def get_data(filters):
     
     # 4. Calculate time spent and prepare final data
     result = []
+    total_duration_minutes = 0
+    
     for (user, doctype, docname), data in user_doc_data.items():
         # Calculate time spent based on activity timestamps
         total_minutes = calculate_time_spent(data["activities"])
+        total_duration_minutes += total_minutes
         
-        # Format time with h, m, or s suffix
+        # Format time as HH:MM:SS
         time_display = format_time_display(total_minutes)
         
         result.append({
@@ -254,6 +257,18 @@ def get_data(filters):
     
     # Sort by user and total time
     result.sort(key=lambda x: (x["user"] or "", -x.get("_total_minutes", 0)))
+    
+    # Add total row
+    if result:
+        result.append({
+            "user": "",
+            "document_type": "",
+            "document_name": "<b>Total</b>",
+            "first_access": "",
+            "last_access": "",
+            "total_time_minutes": f"<b>{format_time_display(total_duration_minutes)}</b>",
+            "_total_minutes": 0
+        })
     
     # Remove the hidden sorting field
     for row in result:
@@ -369,8 +384,11 @@ def get_consolidated_data(filters):
     
     # Calculate consolidated time and prepare result
     result = []
+    total_duration_minutes = 0
+    
     for (user, doctype), activities in user_doctype_activities.items():
         total_minutes = calculate_time_spent(activities)
+        total_duration_minutes += total_minutes
         time_display = format_time_display(total_minutes)
         
         result.append({
@@ -383,6 +401,15 @@ def get_consolidated_data(filters):
     # Sort by total time (highest first) in consolidated view
     result.sort(key=lambda x: -x.get("_total_minutes", 0))
     
+    # Add total row
+    if result:
+        result.append({
+            "user": "",
+            "document_type": "<b>Total</b>",
+            "total_time_minutes": f"<b>{format_time_display(total_duration_minutes)}</b>",
+            "_total_minutes": 0
+        })
+    
     # Remove the hidden sorting field
     for row in result:
         row.pop("_total_minutes", None)
@@ -391,19 +418,17 @@ def get_consolidated_data(filters):
 
 def format_time_display(total_minutes):
     """
-    Format time with appropriate suffix (h for hours, m for minutes, s for seconds)
+    Format time as HH:MM:SS
     """
-    if total_minutes >= 60:
-        hours = total_minutes / 60
-        if hours >= 10:
-            return f"{round(hours, 1)}h"
-        else:
-            return f"{round(hours, 2)}h"
-    elif total_minutes >= 1:
-        return f"{round(total_minutes, 2)}m"
-    else:
-        seconds = total_minutes * 60
-        return f"{round(seconds, 1)}s"
+    if total_minutes <= 0:
+        return "00:00:00"
+    
+    total_seconds = int(total_minutes * 60)
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    seconds = total_seconds % 60
+    
+    return f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
 def calculate_time_spent(activities):
     """
