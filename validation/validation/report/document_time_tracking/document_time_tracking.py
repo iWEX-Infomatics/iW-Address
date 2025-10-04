@@ -8,6 +8,11 @@ def execute(filters=None):
     Report to track time spent by users on documents
     Data sources: Activity Log, Version, Route History
     """
+    # Check permission - only specific users can view this report
+    allowed_users = ["ameerbabu@iwex.in", "support@iwex.in", "Administrator"]
+    if frappe.session.user not in allowed_users:
+        frappe.throw(_("You don't have permission to view this report"), frappe.PermissionError)
+    
     if not filters:
         filters = {}
     
