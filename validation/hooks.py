@@ -282,6 +282,9 @@ doc_events = {
              "validation.customization.address.validate"],
         "on_update": "validation.customization.customer_address.update_customer_territory_from_address"
    },
+    "Sales Order": {
+        "before_submit": "validation.customization.sales_order.validate_packed_items_stock"
+    },
     "*": {
         "validate": "validation.validation.doctype.private_dictionary.private_dictionary.global_validate_replacement"
     }
